@@ -147,9 +147,412 @@ class ProtocolScreen extends StatelessWidget {
   const ProtocolScreen({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
+    final TextStyle? normal = Theme.of(context).textTheme.bodyLarge;
+    final TextStyle bold = normal?.copyWith(fontWeight: FontWeight.bold) ?? const TextStyle(fontWeight: FontWeight.bold);
     return Scaffold(
       appBar: AppBar(title: const Text('Protocols')),
-      body: const Center(child: Text('Protocols Content Here')),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          // Earthquake
+          ExpansionTile(
+            title: Text('Earthquake', style: bold),
+            children: [
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Earthquake Safety Precautions'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'Knowing what to do when an earthquake strikes is crucial for your safety. This guide outlines immediate actions to take during an earthquake to protect yourself and those around you.\n\n'
+                              'During an Earthquake\n'
+                              '• Drop, Cover, and Hold On: Immediately drop to the ground, take cover under a sturdy desk or table, and hold on to it until the shaking stops. If there\'s no table or desk nearby, drop to the floor next to an interior wall and cover your head and neck with your arms.\n'
+                              '• Stay Indoors: If you are indoors when the shaking starts, stay there. Do not run outside. Most injuries during earthquakes occur when people try to move or exit buildings.\n'
+                              '• Stay Away from Hazards: Move away from windows, mirrors, outside doors, and anything that could fall, such as light fixtures, heavy furniture, or appliances.\n'
+                              '• If in Bed: If you are in bed, stay there. Protect your head with a pillow. It\'s safer to stay in bed than to try to move to another location during intense shaking.\n'
+                              '• If Outdoors: If you are outdoors, move to an open area away from buildings, streetlights, utility wires, and anything that could fall. Drop to the ground and cover your head and neck.\n'
+                              '• If in a Vehicle: If you are in a moving vehicle, pull over to a clear location away from buildings, trees, overpasses, and utility poles. Stay inside with your seatbelt fastened until the shaking stops. When the shaking stops, proceed cautiously and avoid damaged roads.\n'
+                              '• Do Not Use Elevators: Never use elevators during an earthquake. If you are in an elevator, push the button for every floor and exit as soon as the doors open.\n\n'
+                              'After the Shaking Stops\n'
+                              '• Check yourself and others for injuries. Provide first aid if necessary.\n'
+                              '• Be prepared for aftershocks. Drop, Cover, and Hold On again if shaking resumes.\n'
+                              '• If you are in a damaged building, carefully exit when it is safe to do so and move to an open space.\n'
+                              '• Listen to local news and emergency services for official information and instructions.',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Safety Precautions'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text("Earthquake: Do's and Don'ts"),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'What to Do Before an Earthquake\n'
+                              '• Repair deep plaster cracks in ceilings and foundations. Get expert advice if there are signs of structural defects.\n'
+                              '• Anchor overhead lighting fixtures to the ceiling.\n'
+                              '• Follow BIS codes relevant to your area for building standards\n'
+                              '• Fasten shelves securely to walls.\n'
+                              '• Place large or heavy objects on lower shelves.\n'
+                              '• Store breakable items such as bottled foods, glass, and china in low, closed cabinets with latches.\n'
+                              '• Hang heavy items such as pictures and mirrors away from beds, settees, and anywhere that people sit.\n'
+                              '• Brace overhead light and fan fixtures.\n'
+                              '• Repair defective electrical wiring and leaky gas connections. These are potential fire risks.\n'
+                              '• Secure water heaters, LPG cylinders etc., by strapping them to the walls or bolting to the floor.\n'
+                              '• Store weed killers, pesticides, and flammable products securely in closed cabinets with latches and on bottom shelves.\n'
+                              '• Identify safe places indoors and outdoors.\n'
+                              '  - Under strong dining table, bed\n  - Against an inside wall\n  - Away from where glass could shatter around windows, mirrors, pictures, or where heavy bookcases or other heavy furniture could fall over\n  - In the open, away from buildings, trees, telephone and electrical lines, flyovers and bridges\n'
+                              '• Know emergency telephone numbers (such as those of doctors, hospitals, the police, etc)\n'
+                              '• Educate yourself and family members\n• PSHA Table at Grid Points\n'
+                              'Have a disaster emergency kit ready\n'
+                              '• Battery operated torch with extra batteries\n• Battery operated radio\n• First aid kit and manual\n• Emergency food (dry items) and water (packed and sealed)\n• Candles and matches in a waterproof container\n• Knife\n• Chlorine tablets or powdered water purifiers\n• Can opener.\n• Essential medicines\n• Cash and credit cards\n• Thick ropes and cords\n• Sturdy shoes\n'
+                              'Develop an emergency communication plan\n'
+                              '• In case family members are separated from one another during an earthquake (a real possibility during the day when adults are at work and children are at school), develop a plan for reuniting after the disaster.\n'
+                              '• Ask an out-of-state relative or friend to serve as the "family contact" after the disaster; it is often easier to call long distance. Make sure everyone in the family knows the name, address, and phone number of the contact person.\n'
+                              'Help your community get ready\n'
+                              '• Publish a special section in your local newspaper with emergency information on earthquakes. Localize the information by printing the phone numbers of local emergency services offices and hospitals.\n'
+                              '• Conduct week-long series on locating hazards in the home.\n'
+                              '• Work with local emergency services and officials to prepare special reports for people with mobility impairment on what to do during an earthquake.\n'
+                              '• Provide tips on conducting earthquake drills in the home.\n'
+                              '• Interview representatives of the gas, electric, and water companies about shutting off utilities.\n'
+                              '• Work together in your community to apply your knowledge to building codes, retrofitting programmes, hazard hunts, and neighborhood and family emergency plans.\n\n'
+                              'What to Do During an Earthquake\n'
+                              '• Stay as safe as possible during an earthquake. Be aware that some earthquakes are actually foreshocks and a larger earthquake might occur. Minimize your movements to a few steps that reach a nearby safe place and stay indoors until the shaking has stopped and you are sure exiting is safe.\n'
+                              'If indoors\n'
+                              '• DROP to the ground; take COVER by getting under a sturdy table or other piece of furniture; and HOLD ON until the shaking stops. If there is no a table or desk near you, cover your face and head with your arms and crouch in an inside corner of the building.\n'
+                              '• Protect yourself by staying under the lintel of an inner door, in the corner of a room, under a table or even under a bed.\n'
+                              '• Stay away from glass, windows, outside doors and walls, and anything that could fall, (such as lighting fixtures or furniture).\n'
+                              '• Stay in bed if you are there when the earthquake strikes. Hold on and protect your head with a pillow, unless you are under a heavy light fixture that could fall. In that case, move to the nearest safe place.\n'
+                              '• Use a doorway for shelter only if it is in close proximity to you and if you know it is a strongly supported, load bearing doorway.\n'
+                              '• Stay inside until the shaking stops and it is safe to go outside. Research has shown that most injuries occur when people inside buildings attempt to move to a different location inside the building or try to leave.\n'
+                              '• Be aware that the electricity may go out or the sprinkler systems or fire alarms may turn on.\n'
+                              'If outdoors\n'
+                              '• Do not move from where you are. However, move away from buildings, trees, streetlights, and utility wires.\n'
+                              '• If you are in open space, stay there until the shaking stops. The greatest danger exists directly outside buildings; at exits; and alongside exterior walls. Most earthquake-related casualties result from collapsing walls, flying glass, and falling objects.\n'
+                              'If in a moving vehicle\n'
+                              '• Stop as quickly as safety permits and stay in the vehicle. Avoid stopping near or under buildings, trees, overpasses, and utility wires.\n'
+                              '• Proceed cautiously once the earthquake has stopped. Avoid roads, bridges, or ramps that might have been damaged by the earthquake.\n'
+                              'If trapped under debris\n'
+                              '• Do not light a match.\n'
+                              '• Do not move about or kick up dust.\n'
+                              '• Cover your mouth with a handkerchief or clothing.\n'
+                              '• Tap on a pipe or wall so rescuers can locate you. Use a whistle if one is available. Shout only as a last resort. Shouting can cause you to inhale dangerous amounts of dust.',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text("Do's and Don'ts"),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+          // Flood
+          ExpansionTile(
+            title: Text('Flood', style: bold),
+            children: [
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Flood: Do’s & Don’ts'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'What to do before a flood\n'
+                              '• Avoid building in flood prone areas unless you elevate and reinforce your home.\n'
+                              '• Elevate the furnace, water heater, and electric panel if susceptible to flooding.\n'
+                              '• Install "Check Valves" in sewer traps to prevent floodwater from backing up into the drains of your home.\n'
+                              '• Contact community officials to find out if they are planning to construct barriers (levees, beams and floodwalls) to stop floodwater from entering the homes in your area.\n'
+                              '• Seal the walls in your basement with waterproofing compounds to avoid seepage.\n\n'
+                              'If a flood is likely to hit your area, you should:\n'
+                              '• Listen to the radio or television for information.\n'
+                              '• Be aware that flash flooding can occur. If there is any possibility of a flash flood, move immediately to higher ground. Do not wait for instructions to move.\n'
+                              '• Be aware of streams, drainage channels, canyons, and other areas known to flood suddenly. Flash floods can occur in these areas with or without such typical warnings as rain clouds or heavy rain.\n\n'
+                              'If you must prepare to evacuate, you should:\n'
+                              '• Secure your home. If you have time, bring in outdoor furniture. Move essential items to an upper floor.\n'
+                              '• Turn off utilities at the main switches or valves if instructed to do so. Disconnect electrical appliances. Do not touch electrical equipment if you are wet or standing in water.\n\n'
+                              'If you have to leave your home, remember these evacuation tips:\n'
+                              '• Do not walk through moving water. Six inches of moving water can make you fall. If you have to walk in water, walk where the water is not moving. Use a stick to check the firmness of the ground in front of you.\n'
+                              '• Do not drive into flooded areas. If floodwaters rise around your car, abandon the car and move to higher ground if you can do so safely. You and the vehicle can be quickly swept away.',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Do’s & Don’ts'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+          // Urban Flood
+          ExpansionTile(
+            title: Text('Urban Flood', style: bold),
+            children: [
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Urban Flood: Do’s & Don’ts'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'Before floods\n'
+                              '• Do not litter waste, plastic bags, plastic bottles in drains\n'
+                              '• Try to be at home if high tide and heavy rains occur simultaneously\n'
+                              '• Listen to weather forecast at All India Radio, Doordarshan. Also, messages by Municipal bodies from time to time and act accordingly.\n'
+                              '• Evacuate low lying areas and shift to safer places.\n'
+                              '• Make sure that each person has lantern, torch, some edibles, drinking water, dry clothes and necessary documents while evacuating or shifting.\n'
+                              '• Make sure that each family member has identity card.\n'
+                              '• Put all valuables at a higher place in the house.\n\n'
+                              'In the Flood Situation\n'
+                              '• Obey orders by government and shift to a safer place.\n'
+                              '• Be at safe place and they try to collect correct information.\n'
+                              '• Switch of electrical supply and don’t touch open wires.\n'
+                              '• Don’t get carried away by rumors and don not spread rumors.\n\n'
+                              'After Floods\n'
+                              '• Drink chlorinated or boiled water.\n'
+                              '• Take clean and safe food\n'
+                              '• Sprinkle insecticides in the water ponds/ stagnant water.\n'
+                              '• Please cooperate with disaster survey team by giving correct information.\n\n'
+                              'DO’s\n'
+                              '• Switch off electrical and gas appliances, and turn off services off at the mains.\n'
+                              '• Carry your emergency kit and let your friends and family know where you are going.\n'
+                              '• Avoid contact with flood water it may be contaminated with sewage,oil,chemicals or other substances.\n'
+                              '• If you have to walk in standing water, use a pole or stick to ensure that you do not step into deep water, open manholes or ditches.\n'
+                              '• Stay away from power lines electrical current can travel through water, Report power lines that are down to the power company.\n'
+                              '• Look before you step-after a flood, the ground and floors are covered with debris, which may include broken bottles, sharp objects, nails etc.Floors and stairs covered with mud and debris can be slippery.\n'
+                              '• Listen to the radio or television for updates and information.\n'
+                              '• If the ceiling is wet shut off electricity. Place a bucket underneath the spot and poke a small hole into the ceiling to relieve the pressure.\n'
+                              '• Use buckets,clean towels and mops to remove as much of the water from the afflicted rooms as possible.\n'
+                              '• Place sheets of aluminium foil between furniture wet carpet.\n\n'
+                              'Don’ts\n'
+                              '• Don’t walk through flowing water - currents can be deceptive, and shallow, fast moving water can knock you off your feet.\n'
+                              '• Don’t swim through fast flowing water - you may get swept away or struck by an object in the water.\n'
+                              '• Don’t drive through a flooded area - You may not be able to see abrupt drop - offs and only half a meter of flood water can carry a car away. Driving through flood water can also cause additional damage to nearby property.\n'
+                              '• Don’t eat any food that has come into contact with flood water.\n'
+                              '• Don’t reconnect your power supply until a qualified engineer has checked it. Be alert for gas leaks - do not smoke or use candles, lanterns, or open flames.\n'
+                              '• Don’t scrub or brush mud and other deposits from materials, This may cause further damage.\n'
+                              '• Never turn on ceiling fixtures if ceiling is wet. Stay away from ceilings those are sagging.\n'
+                              '• Never use TVs, VCRS, CRT terminals or other electrical equipment while standing on wet floors, especially concrete.\n'
+                              '• Don’t attempt to remove standing water using your vacuum cleaner.\n'
+                              '• Don’t remove standing water in a basement too fast. If the pressure is relieved too quickly it may put undue stress on the walls.',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Do’s & Don’ts'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+          // Landslide
+          ExpansionTile(
+            title: Text('Landslide', style: bold),
+            children: [
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Landslide: Do’s & Don’ts'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'Do’s\n'
+                              '• Prepare tour to hilly region according to information given by weather department or news channel.\n'
+                              '• Move away from landslide path or downstream valleys quickly without wasting time.\n'
+                              '• Keep drains clean,\n'
+                              '• Inspect drains for - litter, leaves, plastic bags, rubble etc.\n'
+                              '• Keep the weep holes open.\n'
+                              '• Grow more trees that can hold the soil through roots,\n'
+                              '• Identify areas of rock fall and subsidence of buildings, cracks that indicate landslides and move to safer areas. Even muddy river waters indicate landslides upstream.\n'
+                              '• Notice such signals and contact the nearest Tehsil or District Head Quarters.\n'
+                              '• Ensure that toe of slope is not cut, remains protected, don’t uproot trees unless re-vegetation is planned.\n'
+                              '• Listen for unusual sounds such as trees cracking or boulders knocking together.\n'
+                              '• Stay alert, awake and active (3A’s) during the impact or probability of impact.\n'
+                              '• Locate and go to shelters,\n'
+                              '• Try to stay with your family and companions.\n'
+                              '• Check for injured and trapped persons.\n'
+                              '• Mark path of tracking so that you can’t be lost in middle of the forest.\n'
+                              '• Know how to give signs or how to communicate during emergency time to flying helicopters and rescue team.\n\n'
+                              'Don’ts\n'
+                              '• Try to avoid construction and staying in vulnerable areas.\n'
+                              '• Do not panic and loose energy by crying.\n'
+                              '• Do not touch or walk over loose material and electrical wiring or pole.\n'
+                              '• Do not built houses near steep slopes and near drainage path.\n'
+                              '• Do not drink contaminated water directly from rivers, springs, wells but rain water if collected directly without is fine.\n'
+                              '• Do not move an injured person without rendering first aid unless the casualty is in immediate danger.',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Do’s & Don’ts'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+          // Cold Wave
+          ExpansionTile(
+            title: Text('Cold Wave', style: bold),
+            children: [
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Cold Wave: Do’s & Don’ts'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              'Dos\n'
+                              '• Have adequate winter clothing. Multiple layers of clothing are also useful.\n'
+                              '• Have emergency supplies ready.\n'
+                              '• Stay indoor as much as possible, minimise travel to prevent exposure to cold wind.\n'
+                              '• Keep dry. If wet, change clothes quickly to prevent loss of body heat.\n'
+                              '• Prefer mittens over gloves; mittens provide more warmth and insulation from cold.\n'
+                              '• Listen to radio, watch TV, read newspapers for weather updates.\n'
+                              '• Drink hot drinks regularly.\n'
+                              '• Take care of elderly people and children.\n'
+                              '• Store adequate water as pipes may freeze.\n'
+                              '• Watch out for symptoms of frostbite like numbness, white or pale appearance on fingers, toes, ear lobes and the tip of the nose.\n'
+                              '• Put the areas affected by frostbite in warm not hot water (the temperature should be comfortable to touch for unaffected parts of the body). In the case of Hypothermia\n'
+                              '• Get the person into a warm place and change his/her clothes.\n'
+                              '• Warm the person’s body with skin-to-skin contact, dry layers of blankets, clothes, towels, or sheets.\n'
+                              '• Give warm drinks to help increase body temperature. Do not give alcohol.\n'
+                              '• Seek medical attention if the condition worsens.\n\n'
+                              'Don’ts\n'
+                              '• Don’t drink alcohol. It reduces your body temperature.\n'
+                              '• Do not massage the frostbitten area. This can cause more damage.\n'
+                              '• Do not ignore shivering. It is an important first sign that the body is losing heat and a signal to quickly return indoors.\n',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Do’s & Don’ts'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+          // Heat Wave
+          ExpansionTile(
+            title: Text('Heat Wave', style: bold),
+            children: [
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Heat Wave: Do’s & Don’ts'),
+                          content: const SingleChildScrollView(
+                            child: Text(
+                              '• Avoid going out in the sun, especially between 12.00 noon and 3.00 p.m.\n'
+                              '• Drink sufficient water and as often as possible, even if not thirsty\n'
+                              '• Wear lightweight, light-coloured, loose, and porous cotton clothes. Use protective goggles, umbrella/hat, shoes or chappals while going out in sun.\n'
+                              '• Avoid strenuous activities when the outside temperature is high. Avoid working outside between 12 noon and 3 p.m.\n'
+                              '• While travelling, carry water with you.\n'
+                              '• Avoid alcohol, tea, coffee and carbonated soft drinks, which dehydrates the body.\n'
+                              '• Avoid high-protein food and do not eat stale food.\n'
+                              '• If you work outside, use a hat or an umbrella and also use a damp cloth on your head, neck, face and limbs\n'
+                              '• Do not leave children or pets in parked vehicles\n'
+                              '• If you feel faint or ill, see a doctor immediately.\n'
+                              '• Use ORS, homemade drinks like lassi, torani (rice water), lemon water, buttermilk, etc. which helps to rehydrate the body.\n'
+                              '• Keep animals in shade and give them plenty of water to drink.\n'
+                              '• Keep your home cool, use curtains, shutters or sunshade and open windows at night.\n'
+                              '• Use fans, damp clothing and take bath in cold water frequently.\n\n'
+                              'TIPS FOR TREATMENT OF A PERSON AFFECTED BY A SUNSTROKE:\n'
+                              '• Lay the person in a cool place, under a shade. Wipe her/him with a wet cloth/wash the body frequently. Pour normal temperature water on the head. The main thing is to bring down the body temperature.\n'
+                              '• Give the person ORS to drink or lemon sarbat/torani or whatever is useful to rehydrate the body.\n'
+                              '• Take the person immediately to the nearest health centre. The patient needs immediate hospitalisation, as heat strokes could be fatal.\n\n'
+                              'Acclimatisation\n'
+                              'People at risk are those who have come from a cooler climate to a hot climate. You may have such a person(s) visiting your family during the heat wave season. They should not move about in open field for a period of one week till the body is acclimatized to heat and should drink plenty of water. Acclimatization is achieved by gradual exposure to the hot environment during heat wave.',
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Do’s & Don’ts'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -193,7 +596,76 @@ class DisasterSafetyScreen extends StatelessWidget {
                 TextSpan(text: '🧠 Stay Calm & Assess\n', style: bold),
                 TextSpan(text: 'Check surroundings for hazards.\n\nAdminister first-aid if needed.\n\nTurn off gas, electricity, and water if safe to do so.\n\n'),
                 TextSpan(text: '🧍‍♂ Shelter or Evacuate?\n', style: bold),
-                TextSpan(text: 'Earthquake: Drop, cover, and hold on. Stay indoors until shaking stops.\n\nFlood: Move to higher ground. Avoid walking or driving through floodwaters.\n\nFire: Evacuate immediately. Cover nose with cloth; stay low to avoid smoke.\n\nCyclone/Hurricane: Stay indoors, away from windows. Evacuate only if instructed.\n\n'),
+                TextSpan(text: 'Earthquake', style: bold),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Earthquake Safety Precautions'),
+                                content: const SingleChildScrollView(
+                                  child: Text(
+                                    'Knowing what to do when an earthquake strikes is crucial for your safety. This guide outlines immediate actions to take during an earthquake to protect yourself and those around you.\n\n'
+                                    'During an Earthquake\n'
+                                    '• Drop, Cover, and Hold On: Immediately drop to the ground, take cover under a sturdy desk or table, and hold on to it until the shaking stops. If there\'s no table or desk nearby, drop to the floor next to an interior wall and cover your head and neck with your arms.\n'
+                                    '• Stay Indoors: If you are indoors when the shaking starts, stay there. Do not run outside. Most injuries during earthquakes occur when people try to move or exit buildings.\n'
+                                    '• Stay Away from Hazards: Move away from windows, mirrors, outside doors, and anything that could fall, such as light fixtures, heavy furniture, or appliances.\n'
+                                    '• If in Bed: If you are in bed, stay there. Protect your head with a pillow. It\'s safer to stay in bed than to try to move to another location during intense shaking.\n'
+                                    '• If Outdoors: If you are outdoors, move to an open area away from buildings, streetlights, utility wires, and anything that could fall. Drop to the ground and cover your head and neck.\n'
+                                    '• If in a Vehicle: If you are in a moving vehicle, pull over to a clear location away from buildings, trees, overpasses, and utility poles. Stay inside with your seatbelt fastened until the shaking stops. When the shaking stops, proceed cautiously and avoid damaged roads.\n'
+                                    '• Do Not Use Elevators: Never use elevators during an earthquake. If you are in an elevator, push the button for every floor and exit as soon as the doors open.\n\n'
+                                    'After the Shaking Stops\n'
+                                    '• Check yourself and others for injuries. Provide first aid if necessary.\n'
+                                    '• Be prepared for aftershocks. Drop, Cover, and Hold On again if shaking resumes.\n'
+                                    '• If you are in a damaged building, carefully exit when it is safe to do so and move to an open space.\n'
+                                    '• Listen to local news and emergency services for official information and instructions.',
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: const Text('Safety Precautions'),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text("Earthquake: Do's and Don'ts"),
+                                content: const Text('Content coming soon.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: const Text("Do's and Don'ts"),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                TextSpan(text: ': Drop, cover, and hold on. Stay indoors until shaking stops.\n\n'),
+                TextSpan(text: 'Flood: Move to higher ground. Avoid walking or driving through floodwaters.\n\n'),
+                TextSpan(text: 'Fire: Evacuate immediately. Cover nose with cloth; stay low to avoid smoke.\n\n'),
+                TextSpan(text: 'Cyclone/Hurricane: Stay indoors, away from windows. Evacuate only if instructed.\n\n'),
                 TextSpan(text: '🆘 Communication\n', style: bold),
                 TextSpan(text: 'Use SMS or messaging apps to conserve bandwidth.\n\nTune into emergency broadcasts on radio.\n\nNotify local authorities or emergency contacts of your status.\n\n'),
                 TextSpan(text: '5. After a Disaster: Recovery and Rehabilitation\n', style: bold),
