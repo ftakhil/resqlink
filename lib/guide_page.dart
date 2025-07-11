@@ -158,9 +158,75 @@ class DisasterSafetyScreen extends StatelessWidget {
   const DisasterSafetyScreen({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
+    final TextStyle? normal = Theme.of(context).textTheme.bodyLarge;
+    final TextStyle bold = normal?.copyWith(fontWeight: FontWeight.bold) ?? const TextStyle(fontWeight: FontWeight.bold);
     return Scaffold(
       appBar: AppBar(title: const Text('Disaster Safety')),
-      body: const Center(child: Text('Disaster Safety Content Here')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Text.rich(
+            TextSpan(
+              style: normal,
+              children: [
+                TextSpan(text: '🛡 Disaster Safety: A Comprehensive Guide to Preparedness and Protection\n', style: bold),
+                TextSpan(text: 'In an era of climate change, urban expansion, and unforeseen global crises, disaster safety is not just a responsibility—it\'s a necessity. Whether natural or man-made, disasters can strike suddenly, leaving little time to react. Being equipped with the right knowledge and tools can make all the difference.\n\nThis guide provides a detailed, topic-wise breakdown of disaster safety strategies to help individuals, families, communities, and institutions stay resilient in the face of calamity.\n\n'),
+                TextSpan(text: '1. Understanding Disasters\n', style: bold),
+                TextSpan(text: '🔍 Types of Disasters\nNatural Disasters:\n\nEarthquakes\nFloods\nCyclones and Hurricanes\nLandslides\nDroughts\nTsunamis\nWildfires\nVolcanic Eruptions\n\nMan-Made Disasters:\n\nIndustrial Accidents\nChemical Spills\nNuclear Accidents\nTransportation Accidents\nTerrorist Attacks\nCyber Attacks\n\n'),
+                TextSpan(text: '🌍 Causes and Effects\n', style: bold),
+                TextSpan(text: 'Natural disasters often result from geological, meteorological, or environmental phenomena.\n\nMan-made disasters arise due to human negligence, conflict, or technological failures.\n\nEffects include loss of life, economic damage, displacement, trauma, and long-term societal disruption.\n\n'),
+                TextSpan(text: '2. Disaster Preparedness\n', style: bold),
+                TextSpan(text: 'Preparedness is the first step toward reducing vulnerability. A well-thought-out plan can save lives.\n\n'),
+                TextSpan(text: '🏠 Home and Family Preparedness\n', style: bold),
+                TextSpan(text: 'Create a Family Emergency Plan: Define meeting points, emergency contacts, and evacuation routes.\n\nAssemble an Emergency Kit: Include water, non-perishable food, flashlight, batteries, first-aid kit, important documents, radio, multi-tool, medications, and cash.\n\nPractice Drills Regularly: Earthquake and fire drills can build muscle memory for real scenarios.\n\nSecure Your Home: Anchor heavy furniture, retrofit structures, and install fire and smoke alarms.\n\n'),
+                TextSpan(text: '🏫 School and Workplace Plans\n', style: bold),
+                TextSpan(text: 'Establish evacuation maps and designate safety coordinators.\n\nConduct regular drills and first-aid training sessions.\n\nUse public address systems for real-time communication.\n\n'),
+                TextSpan(text: '3. Technology and Disaster Safety\n', style: bold),
+                TextSpan(text: 'Modern technology offers real-time alerts, early warning systems, and communication during chaos.\n\n'),
+                TextSpan(text: '📲 Mobile Apps and Alerts\n', style: bold),
+                TextSpan(text: 'Government emergency apps (e.g., NDMA app in India, FEMA in the US)\n\nGoogle SOS alerts\n\nSocial media crisis response tools\n\n'),
+                TextSpan(text: '🌐 Smart Systems\n', style: bold),
+                TextSpan(text: 'IoT-based disaster monitoring (flood sensors, fire detection)\n\nSatellite imagery and drones for search and rescue\n\nAI-powered hazard prediction and damage assessment\n\n'),
+                TextSpan(text: '💾 Data Backups\n', style: bold),
+                TextSpan(text: 'Digitize and back up critical documents to cloud storage.\n\nMaintain encrypted backups of health, ID, and legal records.\n\n'),
+                TextSpan(text: '4. During a Disaster: Immediate Response\n', style: bold),
+                TextSpan(text: '🧠 Stay Calm & Assess\n', style: bold),
+                TextSpan(text: 'Check surroundings for hazards.\n\nAdminister first-aid if needed.\n\nTurn off gas, electricity, and water if safe to do so.\n\n'),
+                TextSpan(text: '🧍‍♂ Shelter or Evacuate?\n', style: bold),
+                TextSpan(text: 'Earthquake: Drop, cover, and hold on. Stay indoors until shaking stops.\n\nFlood: Move to higher ground. Avoid walking or driving through floodwaters.\n\nFire: Evacuate immediately. Cover nose with cloth; stay low to avoid smoke.\n\nCyclone/Hurricane: Stay indoors, away from windows. Evacuate only if instructed.\n\n'),
+                TextSpan(text: '🆘 Communication\n', style: bold),
+                TextSpan(text: 'Use SMS or messaging apps to conserve bandwidth.\n\nTune into emergency broadcasts on radio.\n\nNotify local authorities or emergency contacts of your status.\n\n'),
+                TextSpan(text: '5. After a Disaster: Recovery and Rehabilitation\n', style: bold),
+                TextSpan(text: 'Recovery is a long-term effort, but a structured approach accelerates healing and rebuilding.\n\n'),
+                TextSpan(text: '🛠 Physical Recovery\n', style: bold),
+                TextSpan(text: 'Check for structural damage before re-entering buildings.\n\nUse protective gear while cleaning debris.\n\nAvoid drinking tap water until authorities declare it safe.\n\n'),
+                TextSpan(text: '💰 Financial Recovery\n', style: bold),
+                TextSpan(text: 'Contact insurance companies to report damages.\n\nApply for government aid or relief schemes.\n\nKeep receipts and documentation for claims.\n\n'),
+                TextSpan(text: '💬 Mental Health Support\n', style: bold),
+                TextSpan(text: 'Post-traumatic stress is common after disasters.\n\nProvide counseling, community healing sessions, and peer support.\n\nEncourage open discussions, especially among children and the elderly.\n\n'),
+                TextSpan(text: '6. Community Involvement and Volunteerism\n', style: bold),
+                TextSpan(text: '🤝 Community Preparedness\n', style: bold),
+                TextSpan(text: 'Form local disaster response teams (CERTs).\n\nTrain volunteers in first-aid, firefighting, and evacuation protocols.\n\nEngage schools, colleges, and businesses in safety drills.\n\n'),
+                TextSpan(text: '🧑‍🔧 Roles of Local Authorities\n', style: bold),
+                TextSpan(text: 'Develop city-wide early warning systems.\n\nConduct risk assessments and vulnerability mapping.\n\nInvest in resilient infrastructure (e.g., elevated roads, storm drains, green spaces).\n\n'),
+                TextSpan(text: '7. Building a Culture of Resilience\n', style: bold),
+                TextSpan(text: 'Disaster safety isn’t just about one-time readiness—it’s about fostering a resilient mindset.\n\n'),
+                TextSpan(text: '📚 Education and Awareness\n', style: bold),
+                TextSpan(text: 'Integrate disaster management into school curricula.\n\nHost awareness camps, competitions, and exhibitions.\n\nCelebrate National Disaster Reduction Day (October 13 globally).\n\n'),
+                TextSpan(text: '🏗 Sustainable Development\n', style: bold),
+                TextSpan(text: 'Avoid construction in hazard-prone zones.\n\nPromote eco-friendly architecture and climate-adaptive designs.\n\nEncourage local innovations (like bamboo reinforcements, rainwater harvesting).\n\n'),
+                TextSpan(text: '8. Global and National Disaster Management Frameworks\n', style: bold),
+                TextSpan(text: '🌐 International Initiatives\n', style: bold),
+                TextSpan(text: 'Sendai Framework for Disaster Risk Reduction (2015–2030)\n\nUNISDR, Red Cross, World Bank Disaster Risk Initiatives\n\n'),
+                TextSpan(text: '🇮🇳 India’s Disaster Management Structure\n', style: bold),
+                TextSpan(text: 'NDMA (National Disaster Management Authority)\n\nNDRF (National Disaster Response Force)\n\nState Disaster Management Authorities (SDMAs)\n\nDisaster Management Acts and Local Disaster Management Plans\n\n'),
+                TextSpan(text: 'Conclusion: Safety is a Shared Responsibility\n', style: bold),
+                TextSpan(text: 'Disasters will continue to be part of our reality—but our vulnerability doesn’t have to be. With a collective effort grounded in awareness, preparation, and technology, we can minimize risk, protect lives, and build a future that\'s not only safe, but resilient.\n\nWhether you\'re a student, parent, community leader, or developer building a smart disaster detection system—your actions today shape your safety tomorrow.\n\nStay alert. Stay prepared. Stay strong.'),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 } 
