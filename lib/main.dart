@@ -7,6 +7,9 @@ import 'community_screen.dart';
 import 'region_details_screen.dart';
 import 'map_page.dart';
 import 'guide_page.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io';
 
 void main() {
   runApp(const ResQLinkApp());
@@ -65,6 +68,26 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
+
+    Future<void> _openMedicalCamAI() async {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        final url = Uri.parse('YOUR_API_ENDPOINT');
+        final request = http.MultipartRequest('POST', url);
+        request.files.add(await http.MultipartFile.fromPath('file', pickedFile.path));
+        final response = await request.send();
+        if (response.statusCode == 200) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Image sent successfully!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to send image. Status: ${response.statusCode}')),
+          );
+        }
+      }
+    }
 
     Widget bodyWidget;
     print('Building with _selectedIndex: $_selectedIndex');
@@ -167,9 +190,9 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                     ),
                     ActionIconButton(
                       backgroundColor: Colors.grey,
-                      icon: Icons.medical_services,
-                      label: 'Medical',
-                      onTap: () {},
+                      icon: Icons.camera_alt,
+                      label: 'MedicalCam AI',
+                      onTap: _openMedicalCamAI,
                       iconSize: 40, // Increased icon size
                       avatarRadius: 36, // Increased avatar size
                     ),
@@ -187,49 +210,29 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
         title: const Text('ResQ Link'),
         leading: null, // Removed the menu icon
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: bodyWidget,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        type: BottomNavigationBarType.shifting,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        backgroundColor: const Color(0xFF003366),
-        showUnselectedLabels: true,
+      body: bodyWidget,
+      bottomNavigationBar: CurvedNavigationBar(
+        key: _bottomNavKey,
+        index: _selectedIndex,
+        height: 60.0,
+        items: const <Widget>[
+          Icon(Icons.home, size: 30, color: Colors.white),
+          Icon(Icons.people, size: 30, color: Colors.white),
+          Icon(Icons.map, size: 30, color: Colors.white),
+          Icon(Icons.menu_book, size: 30, color: Colors.white),
+          Icon(Icons.person, size: 30, color: Colors.white),
+        ],
+        color: const Color(0xFF003366),
+        buttonBackgroundColor: const Color(0xFF003366),
+        backgroundColor: Colors.transparent,
+        animationCurve: Curves.easeInOut,
+        animationDuration: const Duration(milliseconds: 600),
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-            backgroundColor: Color(0xFF003366),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Community',
-            backgroundColor: Color(0xFF003366),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Map',
-            backgroundColor: Color(0xFF003366),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book),
-            label: 'Guide',
-            backgroundColor: Color(0xFF003366),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-            backgroundColor: Color(0xFF003366),
-          ),
-        ],
+        letIndexChange: (index) => true,
       ),
     );
   }
