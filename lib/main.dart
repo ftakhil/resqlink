@@ -10,8 +10,15 @@ import 'guide_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io';
+import 'auth_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://axhllqkehjppzhjyjumg.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4aGxscWtlaGpwcHpoanlqdW1nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjIxODAxNCwiZXhwIjoyMDY3Nzk0MDE0fQ.m8Ye09Nt7pZf4cIdIQpNoC0hMzJXHl83KoiLgUSXy4A',
+  );
   runApp(const ResQLinkApp());
 }
 
@@ -40,7 +47,7 @@ class ResQLinkApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const ResQLinkHomePage(),
+      home: const AuthPage(),
       debugShowCheckedModeBanner: false,
     );
   }
