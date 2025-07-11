@@ -207,7 +207,10 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ResQ Link'),
+        title: Image.asset(
+          'assets/logo.png',
+          height: 50,
+        ),
         leading: null, // Removed the menu icon
       ),
       body: bodyWidget,
