@@ -19,6 +19,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
+import 'screens/voice_chat_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -361,7 +362,12 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                       backgroundColor: Colors.blue,
                       icon: Icons.mic,
                       label: 'Voice',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const VoiceChatPage()),
+                        );
+                      },
                       iconSize: 40, // Increased icon size
                       avatarRadius: 36, // Increased avatar size
                     ),
