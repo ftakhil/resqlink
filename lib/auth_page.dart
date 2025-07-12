@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'main.dart';
+import 'user_session.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({Key? key}) : super(key: key);
@@ -136,6 +137,9 @@ class _AuthPageState extends State<AuthPage> {
                                   .eq('password', _passwordController.text)
                                   .maybeSingle();
                               if (response != null) {
+                                UserSession.email = response['email'];
+                                UserSession.name = response['name'];
+                                UserSession.phone = response['phone'];
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('Sign in successful!')),
@@ -165,6 +169,9 @@ class _AuthPageState extends State<AuthPage> {
                                 'password': _passwordController.text, // In production, hash the password!
                                 'role': _role,
                               });
+                              UserSession.email = _emailController.text.trim();
+                              UserSession.name = _nameController.text.trim();
+                              UserSession.phone = '+91${_phoneController.text.trim()}';
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Sign up successful!')),

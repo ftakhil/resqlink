@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'auth_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,6 +108,9 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     } else if (_selectedIndex == 3) {
       print('Building GuidePage');
       bodyWidget = GuidePage(key: const ValueKey('guide'));
+    } else if (_selectedIndex == 4) {
+      print('Building ProfileScreen');
+      bodyWidget = const ProfileScreen(key: ValueKey('profile'));
     } else {
       print('Building HomePage');
       bodyWidget = SafeArea(key: const ValueKey('home'),
