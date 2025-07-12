@@ -109,12 +109,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     name.isNotEmpty ? name : 'Your Name',
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ).animate().fadeIn(duration: 600.ms, delay: 100.ms).slideY(begin: 0.2),
-                  const SizedBox(height: 24),
-                  _profileField('Phone:', phone),
-                  const SizedBox(height: 12),
-                  _profileField('Gmail:', email),
-                  const SizedBox(height: 12),
-                  _profileField('Location:', location),
+                  const SizedBox(height: 32),
+                  _profile3DBox('Name', name.isNotEmpty ? name : '---', Icons.person),
+                  const SizedBox(height: 18),
+                  _profile3DBox('Phone', phone.isNotEmpty ? phone : '---', Icons.phone),
+                  const SizedBox(height: 18),
+                  _profile3DBox('Gmail', email.isNotEmpty ? email : '---', Icons.email),
+                  const SizedBox(height: 18),
+                  _profile3DBox('Location', location.isNotEmpty ? location : '---', Icons.location_on),
                   const Spacer(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -136,23 +138,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _profileField(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value.isNotEmpty ? value : '---',
-            style: const TextStyle(fontSize: 16),
-            overflow: TextOverflow.ellipsis,
-          ).animate().fadeIn(duration: 600.ms, delay: 100.ms).slideX(begin: -0.1),
-        ),
-      ],
-    );
+  Widget _profile3DBox(String label, String value, IconData icon) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blueGrey.withOpacity(0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.blueGrey.withOpacity(0.06),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFF003366).withOpacity(0.08), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF003366).withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            padding: const EdgeInsets.all(10),
+            child: Icon(icon, color: const Color(0xFF003366), size: 28),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF003366))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1);
   }
 } 
