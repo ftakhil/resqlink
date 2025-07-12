@@ -13,6 +13,12 @@ import 'dart:io';
 import 'auth_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/profile_screen.dart';
+import 'package:vibration/vibration.dart';
+import 'package:torch_light/torch_light.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,11 +73,15 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
 
   String? _notificationMsg;
   bool _notificationLoading = true;
+  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  Stream<List<Map<String, dynamic>>>? _alertStream;
 
   @override
   void initState() {
     super.initState();
     _fetchNotification();
+    _initializeNotifications();
+    _listenToEmergencyAlert();
   }
 
   Future<void> _fetchNotification() async {
@@ -96,11 +106,128 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     }
   }
 
+  void _listenToEmergencyAlert() {
+    final supabase = Supabase.instance.client;
+    _alertStream = supabase
+      .from('alerts')
+      .stream(primaryKey: ['id']);
+    _alertStream!.listen((data) {
+      if (data.isNotEmpty && data.last['alert'] == 'yes') {
+        _emergencyAlert();
+      }
+    });
+  }
+
+  Future<void> _initializeNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+    await _notificationsPlugin.initialize(initializationSettings);
+  }
+
+  Future<void> _emergencyAlert() async {
+    // Vibration
+    if (await Vibration.hasVibrator() ?? false) {
+      Vibration.vibrate(duration: 500);
+    }
+    // Flashlight blinking
+    try {
+      for (int i = 0; i < 5; i++) {
+        await TorchLight.enableTorch();
+        await Future.delayed(const Duration(milliseconds: 200));
+        await TorchLight.disableTorch();
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+    } catch (e) {}
+    // Emergency ringtone
+    final player = AudioPlayer();
+    try {
+      await player.setAsset('assets/warning.mp3');
+      await player.play();
+    } catch (e) {}
+    // Notification permission (Android 13+)
+    try {
+      if (await Permission.notification.isDenied) {
+        await Permission.notification.request();
+      }
+    } catch (e) {}
+    // Red notification
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'emergency_channel',
+      'Emergency Alerts',
+      channelDescription: 'Channel for emergency check alerts',
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'ticker',
+      color: Colors.red,
+      colorized: true,
+    );
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+    try {
+      await _notificationsPlugin.show(
+        0,
+        'Emergency Check',
+        'All emergency functions triggered!',
+        platformChannelSpecifics,
+      );
+    } catch (e) {}
+  }
+
   void _onNavItemTapped(int index) {
     print('Tapped index: $index');
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  Future<void> _onSosPressed() async {
+    // Get location
+    Position? position;
+    String locationMsg = '';
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (serviceEnabled && (permission == LocationPermission.always || permission == LocationPermission.whileInUse)) {
+        position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        locationMsg = 'Lat:  A${position.latitude}, Long: ${position.longitude}';
+      } else {
+        locationMsg = 'Location permission denied or service disabled.';
+      }
+    } catch (e) {
+      locationMsg = 'Failed to get location.';
+    }
+    // Show dialog
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Emergency Alert Sent!'),
+        content: Text('Your location: $locationMsg'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    // Send alert to Supabase
+    final supabase = Supabase.instance.client;
+    await supabase.from('alerts').insert({
+      'alert': 'yes',
+      'latitude': position?.latitude,
+      'longitude': position?.longitude,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+    // Optionally, trigger local emergency alert
+    await _emergencyAlert();
   }
 
   @override
@@ -188,7 +315,7 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                       shadowColor: Colors.redAccent.withOpacity(0.6),
                       child: InkWell(
                         customBorder: const CircleBorder(),
-                        onTap: () {},
+                        onTap: _onSosPressed,
                         child: Padding(
                           padding: const EdgeInsets.all(36), // Enlarged padding
                           child: Column(
