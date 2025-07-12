@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'main.dart';
 import 'user_session.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({Key? key}) : super(key: key);
@@ -18,6 +19,30 @@ class _AuthPageState extends State<AuthPage> {
   final TextEditingController _passwordController = TextEditingController();
   String _role = 'general';
   bool _isSignIn = false;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkRememberedUser();
+  }
+
+  Future<void> _checkRememberedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('user_email');
+    final name = prefs.getString('user_name');
+    final phone = prefs.getString('user_phone');
+    if (email != null && name != null && phone != null) {
+      UserSession.email = email;
+      UserSession.name = name;
+      UserSession.phone = phone;
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ResQLinkHomePage()),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +165,12 @@ class _AuthPageState extends State<AuthPage> {
                                 UserSession.email = response['email'];
                                 UserSession.name = response['name'];
                                 UserSession.phone = response['phone'];
+                                if (_rememberMe) {
+                                  final prefs = await SharedPreferences.getInstance();
+                                  await prefs.setString('user_email', response['email']);
+                                  await prefs.setString('user_name', response['name']);
+                                  await prefs.setString('user_phone', response['phone']);
+                                }
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('Sign in successful!')),
@@ -172,6 +203,12 @@ class _AuthPageState extends State<AuthPage> {
                               UserSession.email = _emailController.text.trim();
                               UserSession.name = _nameController.text.trim();
                               UserSession.phone = '+91${_phoneController.text.trim()}';
+                              if (_rememberMe) {
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.setString('user_email', _emailController.text.trim());
+                                await prefs.setString('user_name', _nameController.text.trim());
+                                await prefs.setString('user_phone', '+91${_phoneController.text.trim()}');
+                              }
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Sign up successful!')),
@@ -191,6 +228,21 @@ class _AuthPageState extends State<AuthPage> {
                       child: Text(_isSignIn ? 'Sign In' : 'Sign Up', style: const TextStyle(fontSize: 18, color: Colors.white)),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  if (_isSignIn)
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _rememberMe,
+                          onChanged: (val) {
+                            setState(() {
+                              _rememberMe = val ?? false;
+                            });
+                          },
+                        ),
+                        const Text('Remember me / Stay signed in'),
+                      ],
+                    ),
                   const SizedBox(height: 16),
                   GestureDetector(
                     onTap: () {

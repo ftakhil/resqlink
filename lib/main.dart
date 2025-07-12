@@ -65,6 +65,37 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
   int _selectedIndex = 0;
   final GlobalKey<CurvedNavigationBarState> _bottomNavKey = GlobalKey();
 
+  String? _notificationMsg;
+  bool _notificationLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNotification();
+  }
+
+  Future<void> _fetchNotification() async {
+    try {
+      final supabase = Supabase.instance.client;
+      // Fetch the latest notification (assuming table 'notification' with 'msg' and 'created_at')
+      final response = await supabase
+          .from('notification')
+          .select('msg')
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      setState(() {
+        _notificationMsg = response != null ? response['msg'] as String? : null;
+        _notificationLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _notificationMsg = null;
+        _notificationLoading = false;
+      });
+    }
+  }
+
   void _onNavItemTapped(int index) {
     print('Tapped index: $index');
     setState(() {
@@ -121,13 +152,21 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 16),
-                const AlertCard(
-                  backgroundColor: Color(0xFF003366), // Changed back to blue
-                  icon: Icons.notifications_active_outlined,
-                  text: "Heavy rain expected in 2 hours with no call",
-                  iconColor: Colors.white,
-                  textColor: Colors.white,
-                ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2),
+                _notificationLoading
+                  ? const AlertCard(
+                      backgroundColor: Color(0xFF003366),
+                      icon: Icons.notifications_active_outlined,
+                      text: "Loading notification...",
+                      iconColor: Colors.white,
+                      textColor: Colors.white,
+                    )
+                  : AlertCard(
+                      backgroundColor: const Color(0xFF003366),
+                      icon: Icons.notifications_active_outlined,
+                      text: _notificationMsg ?? "No notifications.",
+                      iconColor: Colors.white,
+                      textColor: Colors.white,
+                    ),
                 const SizedBox(height: 12),
                 const AlertCard(
                   backgroundColor: Color(0xFFFFE5B4),
