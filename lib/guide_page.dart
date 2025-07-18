@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GuidePage extends StatelessWidget {
   const GuidePage({Key? key}) : super(key: key);
@@ -67,6 +68,61 @@ class GuidePage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const DisasterSafetyScreen()),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _GuideTile(
+                    icon: Icons.psychology,
+                    color: Colors.purple,
+                    title: 'Consultancy',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Mental Health Support',
+                                style: TextStyle(color: Colors.purple[700], fontWeight: FontWeight.bold)),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'If you are facing any mental health issues or need psychological support during these difficult times, our mental health professionals are here to help.',
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                                const SizedBox(height: 20),
+                                Center(
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.purple[700],
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      // Using URL launcher to open phone dialer
+                                      launchUrl(Uri.parse('tel:+1800123456789'));
+                                    },
+                                    child: const Text(
+                                      '📞 1-800-123-456-789',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Close'),
+                              ),
+                            ],
+                          );
+                        },
                       );
                     },
                   ),
