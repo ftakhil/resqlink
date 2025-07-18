@@ -66,7 +66,7 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
   Future<void> _sendToWebhook(String message) async {
     try {
       final response = await http.post(
-        Uri.parse('https://razyeryt.app.n8n.cloud/webhook-test/native-language'),
+        Uri.parse('https://razyeryt.app.n8n.cloud/webhook/native-language'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'message': message}),
       );
