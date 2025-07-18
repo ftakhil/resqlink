@@ -73,16 +73,16 @@ class GuidePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   _GuideTile(
-                    icon: Icons.psychology,
-                    color: Colors.purple,
-                    title: 'Consultancy',
+                    icon: Icons.emergency,
+                    color: Colors.red,
+                    title: '🆘 Emergency Consultancy',
                     onTap: () {
                       showDialog(
                         context: context,
                         builder: (BuildContext context) {
                           return AlertDialog(
-                            title: Text('Mental Health Support',
-                                style: TextStyle(color: Colors.purple[700], fontWeight: FontWeight.bold)),
+                            title: Text('🚨 Emergency Mental Health Support',
+                                style: TextStyle(color: Colors.red[700], fontWeight: FontWeight.bold)),
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,8 +95,9 @@ class GuidePage extends StatelessWidget {
                                 Center(
                                   child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.purple[700],
+                                      backgroundColor: Colors.red[700],
                                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                      elevation: 8,
                                     ),
                                     onPressed: () {
                                       Navigator.pop(context);
