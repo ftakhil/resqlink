@@ -20,6 +20,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'screens/voice_chat_page.dart';
+import 'screens/medical_chat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -236,24 +237,13 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
 
-    Future<void> _openMedicalCamAI() async {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.camera);
-      if (pickedFile != null) {
-        final url = Uri.parse('YOUR_API_ENDPOINT');
-        final request = http.MultipartRequest('POST', url);
-        request.files.add(await http.MultipartFile.fromPath('file', pickedFile.path));
-        final response = await request.send();
-        if (response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Image sent successfully!')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to send image. Status: ${response.statusCode}')),
-          );
-        }
-      }
+    void _openMedicalCamAI() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MedicalChatScreen(),
+        ),
+      );
     }
 
     Widget bodyWidget;
