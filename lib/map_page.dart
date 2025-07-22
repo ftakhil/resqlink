@@ -153,28 +153,28 @@ class _MapPageState extends State<MapPage> {
     Camp(
       name: 'Thiruvananthapuram Medical Camp',
       type: 'Medical',
-      location: LatLng(8.5241, 76.9366),
+      location: const LatLng(8.5241, 76.9366),
       status: 'Active',
       capacity: 500,
     ),
     Camp(
       name: 'Kochi Emergency Center',
       type: 'Emergency',
-      location: LatLng(9.9312, 76.2673),
+      location: const LatLng(9.9312, 76.2673),
       status: 'Active',
       capacity: 400,
     ),
     Camp(
       name: 'Kozhikode Relief Camp',
       type: 'Shelter',
-      location: LatLng(11.2588, 75.7804),
+      location: const LatLng(11.2588, 75.7804),
       status: 'Active',
       capacity: 300,
     ),
     Camp(
       name: 'Alappuzha Flood Relief',
       type: 'Shelter',
-      location: LatLng(9.4981, 76.3388),
+      location: const LatLng(9.4981, 76.3388),
       status: 'Active',
       capacity: 250,
     ),
@@ -369,7 +369,7 @@ class _MapPageState extends State<MapPage> {
     };
 
     try {
-      final url = Uri.parse('https://api.openrouteservice.org/v2/directions/${_transportMode}');
+      final url = Uri.parse('https://api.openrouteservice.org/v2/directions/$_transportMode');
       
       final response = await http.post(
         url,
@@ -743,7 +743,7 @@ class _MapPageState extends State<MapPage> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              center: LatLng(10.8505, 76.2711), // Kerala center
+              center: const LatLng(10.8505, 76.2711), // Kerala center
               zoom: 8.0,
               onTap: _onMapTapped,
             ),
