@@ -4,12 +4,8 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'widgets/action_icon_button.dart';
 import 'widgets/alert_card.dart';
 import 'community_screen.dart';
-import 'region_details_screen.dart';
 import 'map_page.dart';
 import 'guide_page.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'dart:io';
 import 'auth_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/profile_screen.dart';
@@ -22,6 +18,7 @@ import 'package:geolocator/geolocator.dart';
 import 'screens/voice_chat_page.dart';
 import 'screens/medical_chat_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'widgets/weather_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -135,7 +132,7 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
 
   Future<void> _emergencyAlert() async {
     // Vibration
-    if (await Vibration.hasVibrator() ?? false) {
+    if (await Vibration.hasVibrator()) {
       Vibration.vibrate(duration: 500);
     }
     // Flashlight blinking
@@ -183,12 +180,6 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     } catch (e) {}
   }
 
-  void _onNavItemTapped(int index) {
-    print('Tapped index: $index');
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   Future<void> _onSosPressed() async {
     // Get location
@@ -290,13 +281,10 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                       textColor: Colors.white,
                     ),
                 const SizedBox(height: 12),
-                const AlertCard(
-                  backgroundColor: Color(0xFFFFE5B4),
-                  icon: Icons.wb_sunny_outlined,
-                  text: "Mostly sunny 72°",
-                  iconColor: Color(0xFFCC8400),
-                  textColor: Color(0xFFCC8400),
-                ).animate().fadeIn(duration: 500.ms, delay: 200.ms).slideY(begin: -0.2),
+                const WeatherWidget()
+                  .animate()
+                  .fadeIn(duration: 500.ms, delay: 200.ms)
+                  .slideY(begin: -0.2),
                 const SizedBox(height: 28),
                 Center(
                   child: ConstrainedBox(
