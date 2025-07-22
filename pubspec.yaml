@@ -29,6 +29,7 @@ dependencies:
   speech_to_text: ^6.3.0
   flutter_tts: ^3.8.5
   url_launcher: ^6.2.5
+  flutter_dotenv: ^5.1.0
 
 dev_dependencies:
   flutter_test:
@@ -41,3 +42,4 @@ flutter:
   assets:
     - assets/logo.png
     - assets/warning.mp3
+    - .env

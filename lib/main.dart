@@ -21,16 +21,20 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'screens/voice_chat_page.dart';
 import 'screens/medical_chat_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  print('Loading .env file...');
+  await dotenv.load(fileName: '.env');
+  print('dotenv loaded: ${dotenv.env['OPENROUTE_API_KEY'] != null}');
   await Supabase.initialize(
-    url: 'https://axhllqkehjppzhjyjumg.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4aGxscWtlaGpwcHpoanlqdW1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMTgwMTQsImV4cCI6MjA2Nzc5NDAxNH0.F7debMomICZ6Nub20jdK8vtOwBBA3dOT7u707xaXMbw',
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+  print('Supabase initialized');
   runApp(const ResQLinkApp());
 }
-
 class ResQLinkApp extends StatelessWidget {
   const ResQLinkApp({super.key});
 
@@ -237,7 +241,7 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
 
-    void _openMedicalCamAI() {
+    void openMedicalCamAI() {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -250,13 +254,13 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     print('Building with _selectedIndex: $_selectedIndex');
     if (_selectedIndex == 1) {
       print('Building CommunityScreen');
-      bodyWidget = CommunityScreen(key: const ValueKey('community'));
+      bodyWidget = const CommunityScreen(key: ValueKey('community'));
     } else if (_selectedIndex == 2) {
       print('Building MapPage');
-      bodyWidget = MapPage(key: const ValueKey('map'));
+      bodyWidget = const MapPage(key: ValueKey('map'));
     } else if (_selectedIndex == 3) {
       print('Building GuidePage');
-      bodyWidget = GuidePage(key: const ValueKey('guide'));
+      bodyWidget = const GuidePage(key: ValueKey('guide'));
     } else if (_selectedIndex == 4) {
       print('Building ProfileScreen');
       bodyWidget = const ProfileScreen(key: ValueKey('profile'));
@@ -365,7 +369,7 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                       backgroundColor: Colors.grey,
                       icon: Icons.camera_alt,
                       label: 'MedicalCam AI',
-                      onTap: _openMedicalCamAI,
+                      onTap: openMedicalCamAI,
                       iconSize: 40, // Increased icon size
                       avatarRadius: 36, // Increased avatar size
                     ),

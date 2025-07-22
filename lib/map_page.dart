@@ -1,250 +1,873 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class Weather {
+  final double temp;
+  final String condition;
+  final String iconUrl;
+  final double feelsLike;
+  final double humidity;
+  final double windSpeed;
+  final String windDir;
+  final double pressure;
+  final double precipitation;
+  final double visibility;
+  final double uv;
+
+  Weather({
+    required this.temp,
+    required this.condition,
+    required this.iconUrl,
+    required this.feelsLike,
+    required this.humidity,
+    required this.windSpeed,
+    required this.windDir,
+    required this.pressure,
+    required this.precipitation,
+    required this.visibility,
+    required this.uv,
+  });
+
+  factory Weather.fromJson(Map<String, dynamic> json) {
+    final current = json['current'];
+    return Weather(
+      temp: current['temp_c'].toDouble(),
+      condition: current['condition']['text'],
+      iconUrl: 'https:${current['condition']['icon']}',
+      feelsLike: current['feelslike_c'].toDouble(),
+      humidity: current['humidity'].toDouble(),
+      windSpeed: current['wind_kph'].toDouble(),
+      windDir: current['wind_dir'],
+      pressure: current['pressure_mb'].toDouble(),
+      precipitation: current['precip_mm'].toDouble(),
+      visibility: current['vis_km'].toDouble(),
+      uv: current['uv'].toDouble(),
+    );
+  }
+}
+
+class SearchResult {
+  final String name;
+  final LatLng location;
+
+  SearchResult({
+    required this.name,
+    required this.location,
+  });
+}
+
+class Survivor {
+  final String id;
+  final LatLng location;
+  final DateTime timestamp;
+  final bool needsHelp;
+
+  Survivor({
+    required this.id,
+    required this.location,
+    required this.timestamp,
+    required this.needsHelp,
+  });
+
+  factory Survivor.fromJson(Map<String, dynamic> json) {
+    return Survivor(
+      id: json['id'],
+      location: LatLng(json['latitude'], json['longitude']),
+      timestamp: DateTime.parse(json['created_at']),
+      needsHelp: json['alert'] == 'yes',
+    );
+  }
+}
+
+class Camp {
+  final String name;
+  final String type;
+  final LatLng location;
+  final String status;
+  final int capacity;
+
+  Camp({
+    required this.name,
+    required this.type,
+    required this.location,
+    required this.status,
+    required this.capacity,
+  });
+}
 
 class MapPage extends StatefulWidget {
-  const MapPage({Key? key}) : super(key: key);
+  const MapPage({super.key});
 
   @override
   State<MapPage> createState() => _MapPageState();
 }
 
 class _MapPageState extends State<MapPage> {
-  LatLng? _userLocation;
-  bool _locationPermissionDenied = false;
+  final MapController _mapController = MapController();
+  Position? _currentPosition;
+  bool _loading = false;
   List<LatLng> _routePoints = [];
-  String _routeProfile = 'driving-car'; // 'driving-car' or 'foot-walking'
+  Camp? _selectedCamp;
+  String _transportMode = 'driving-car';
+  String? _routeDistance;
+  String? _routeDuration;
+  bool _isCalculatingRoute = false;
+  
+  // State variables
+  final TextEditingController _searchController = TextEditingController();
+  List<SearchResult> _searchResults = [];
+  bool _isSearching = false;
+  Weather? _weather;
+  bool _isWeatherExpanded = true;
+  List<Survivor> _survivors = [];
+  Timer? _survivorUpdateTimer;
+  LatLng? _selectedSearchLocation;
+  LatLng? _lastTappedLocation;
 
-  // Example rescue camps (schools) in Thiruvananthapuram
-  final List<Map<String, dynamic>> _rescueCamps = [
-    {
-      'name': 'Govt. Model Boys HSS',
-      'position': LatLng(8.5074, 76.9722),
-    },
-    {
-      'name': 'Cotton Hill Girls HSS',
-      'position': LatLng(8.5171, 76.9566),
-    },
-    {
-      'name': 'St. Mary’s HSS Pattom',
-      'position': LatLng(8.5282, 76.9577),
-    },
-    {
-      'name': 'SMV Govt. Model HSS',
-      'position': LatLng(8.4922, 76.9568),
-    },
+  void _onMapTapped(TapPosition tapPosition, LatLng point) {
+    setState(() {
+      _lastTappedLocation = point;
+    });
+    _getWeather(point);
+  }
+
+  Future<void> _refreshMap() async {
+    setState(() => _loading = true);
+    await Future.wait([
+      _getCurrentLocation(),
+      _updateSurvivors(),
+      if (_lastTappedLocation != null) _getWeather(_lastTappedLocation!),
+    ]);
+    setState(() => _loading = false);
+  }
+
+  // Kerala relief camps and emergency centers
+  final List<Camp> camps = [
+    Camp(
+      name: 'Thiruvananthapuram Medical Camp',
+      type: 'Medical',
+      location: LatLng(8.5241, 76.9366),
+      status: 'Active',
+      capacity: 500,
+    ),
+    Camp(
+      name: 'Kochi Emergency Center',
+      type: 'Emergency',
+      location: LatLng(9.9312, 76.2673),
+      status: 'Active',
+      capacity: 400,
+    ),
+    Camp(
+      name: 'Kozhikode Relief Camp',
+      type: 'Shelter',
+      location: LatLng(11.2588, 75.7804),
+      status: 'Active',
+      capacity: 300,
+    ),
+    Camp(
+      name: 'Alappuzha Flood Relief',
+      type: 'Shelter',
+      location: LatLng(9.4981, 76.3388),
+      status: 'Active',
+      capacity: 250,
+    ),
   ];
 
   @override
   void initState() {
     super.initState();
-    _getUserLocation();
+    _getCurrentLocation();
+    _startSurvivorUpdates();
   }
 
-  Future<void> _getUserLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  @override
+  void dispose() {
+    _survivorUpdateTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      setState(() => _locationPermissionDenied = true);
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        setState(() => _locationPermissionDenied = true);
+  Future<void> _getWeather(LatLng location) async {
+    try {
+      final apiKey = dotenv.env['WEATHER_API_KEY'];
+      if (apiKey == null) {
+        _showSnackBar('Weather API key not found');
         return;
       }
+      
+      final response = await http.get(
+        Uri.parse(
+          'https://api.weatherapi.com/v1/current.json?key=$apiKey&q=${location.latitude},${location.longitude}&aqi=no'
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _weather = Weather.fromJson(data);
+        });
+      } else {
+        print('Weather API error: ${response.statusCode} - ${response.body}');
+        _showSnackBar('Unable to fetch weather information');
+      }
+    } catch (e) {
+      print('Weather API error: $e');
+      _showSnackBar('Error loading weather data');
     }
-    if (permission == LocationPermission.deniedForever) {
-      setState(() => _locationPermissionDenied = true);
+  }
+
+  Future<void> _searchLocation(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
       return;
     }
 
+    setState(() => _isSearching = true);
+    
     try {
-      // Try to get the most accurate position
-      final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.bestForNavigation);
-      setState(() {
-        _userLocation = LatLng(position.latitude, position.longitude);
-        _locationPermissionDenied = false;
-      });
-    } catch (e) {
-      // Fallback to last known position if available
-      final lastPosition = await Geolocator.getLastKnownPosition();
-      if (lastPosition != null) {
-        setState(() {
-          _userLocation = LatLng(lastPosition.latitude, lastPosition.longitude);
-          _locationPermissionDenied = false;
-        });
-      }
-    }
-    _fetchRouteToNearestCamp();
-  }
+      final response = await http.get(
+        Uri.parse('https://api.openrouteservice.org/geocode/search?api_key=${dotenv.env['OPENROUTE_API_KEY']}&text=$query'),
+      );
 
-  LatLng _getInitialCenter() {
-    // Center on Thiruvananthapuram if user location is not available
-    return _userLocation ?? LatLng(8.5241, 76.9366);
-  }
-
-  Map<String, dynamic>? _getNearestRescueCamp() {
-    if (_userLocation == null) return null;
-    final Distance distance = const Distance();
-    Map<String, dynamic>? nearest;
-    double minDist = double.infinity;
-    for (var camp in _rescueCamps) {
-      final d = distance(_userLocation!, camp['position'] as LatLng);
-      if (d < minDist) {
-        minDist = d;
-        nearest = camp;
-      }
-    }
-    return nearest;
-  }
-
-  Future<void> _fetchRouteToNearestCamp() async {
-    final nearest = _getNearestRescueCamp();
-    if (_userLocation == null || nearest == null) return;
-    final start = _userLocation!;
-    final end = nearest['position'] as LatLng;
-    final apiKey = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjBhMjc5MDY2ZmI5OTQ1ODJiN2NmMmJhYTQ4YzRlMjBjIiwiaCI6Im11cm11cjY0In0=';
-    final url = Uri.parse(
-      'https://api.openrouteservice.org/v2/directions/$_routeProfile?api_key=$apiKey&start=${start.longitude},${start.latitude}&end=${end.longitude},${end.latitude}',
-    );
-    try {
-      final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final geometry = data['features'][0]['geometry'];
-        if (geometry['type'] == 'LineString') {
-          final coords = geometry['coordinates'] as List;
-          setState(() {
-            _routePoints = coords
-                .map<LatLng>((c) => LatLng(c[1].toDouble(), c[0].toDouble()))
-                .toList();
-          });
-        }
+        final features = data['features'] as List;
+        
+        setState(() {
+          _searchResults = features.map((feature) {
+            final coordinates = feature['geometry']['coordinates'] as List;
+            return SearchResult(
+              name: feature['properties']['label'],
+              location: LatLng(coordinates[1], coordinates[0]),
+            );
+          }).toList();
+        });
       }
     } catch (e) {
-      // ignore errors for demo
+      print('Search API error: $e');
+    } finally {
+      setState(() => _isSearching = false);
     }
+  }
+
+  void _selectSearchResult(SearchResult result) {
+    setState(() {
+      _selectedSearchLocation = result.location;
+      _searchResults = [];
+      _searchController.text = result.name;
+    });
+    
+    _mapController.move(result.location, 15.0);
+    _getWeather(result.location);
+    _getRoute(result.location);
+  }
+
+  Future<void> _startSurvivorUpdates() async {
+    // Initial load
+    await _updateSurvivors();
+    
+    // Set up periodic updates
+    _survivorUpdateTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _updateSurvivors(),
+    );
+  }
+
+  Future<void> _updateSurvivors() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('alerts')
+          .select()
+          .eq('alert', 'yes')
+          .order('created_at', ascending: false)
+          .limit(50);
+
+      setState(() {
+        _survivors = (response as List)
+            .map((data) => Survivor.fromJson(data))
+            .toList();
+      });
+    } catch (e) {
+      print('Supabase error: $e');
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() => _loading = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showSnackBar('Location services are disabled');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showSnackBar('Location permissions are denied');
+          return;
+        }
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _currentPosition = position;
+        _mapController.move(
+          LatLng(position.latitude, position.longitude),
+          15.0,
+        );
+      });
+    } catch (e) {
+      _showSnackBar('Error getting location: $e');
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _getRoute(LatLng destination) async {
+    if (_currentPosition == null) {
+      _showSnackBar('Current location not available');
+      return;
+    }
+
+    setState(() => _isCalculatingRoute = true);
+    final apiKey = dotenv.env['OPENROUTE_API_KEY'];
+    
+    if (apiKey == null) {
+      _showSnackBar('API key not found');
+      return;
+    }
+
+    final start = [_currentPosition!.longitude, _currentPosition!.latitude];
+    final end = [destination.longitude, destination.latitude];
+    
+    final body = {
+      "coordinates": [start, end],
+      "instructions": true,
+      "preference": _transportMode,
+      "units": "km",
+      "language": "en"
+    };
+
+    try {
+      final url = Uri.parse('https://api.openrouteservice.org/v2/directions/${_transportMode}');
+      
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: json.encode(body),
+      );
+
+      print('API Response Status: ${response.statusCode}');
+      print('API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final coordinates = data['routes'][0]['geometry']['coordinates'] as List;
+        final summary = data['routes'][0]['summary'];
+        
+        final distance = summary['distance']; // in meters
+        final duration = summary['duration']; // in seconds
+
+        setState(() {
+          _routePoints = coordinates
+              .map((coord) => LatLng(coord[1] as double, coord[0] as double))
+              .toList();
+          
+          // Format distance
+          _routeDistance = distance > 1000 
+              ? '${(distance / 1000).toStringAsFixed(1)} km'
+              : '${distance.toStringAsFixed(0)} m';
+
+          // Format duration
+          if (duration > 3600) {
+            _routeDuration = '${(duration / 3600).toStringAsFixed(1)} hours';
+          } else if (duration > 60) {
+            _routeDuration = '${(duration / 60).toStringAsFixed(0)} minutes';
+          } else {
+            _routeDuration = '${duration.toStringAsFixed(0)} seconds';
+          }
+
+          // Center map to show entire route
+          _fitRoute();
+        });
+      } else {
+        print('Error Response: ${response.body}');
+        _showSnackBar('Error calculating route: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Exception while calculating route: $e');
+      _showSnackBar('Error: Unable to calculate route');
+    } finally {
+      setState(() => _isCalculatingRoute = false);
+    }
+  }
+
+  void _fitRoute() {
+    if (_routePoints.isEmpty) return;
+    
+    final bounds = LatLngBounds.fromPoints(_routePoints);
+    _mapController.fitBounds(
+      bounds,
+      options: const FitBoundsOptions(padding: EdgeInsets.all(50.0)),
+    );
+  }
+
+  void _selectCamp(Camp camp) {
+    setState(() {
+      _selectedCamp = camp;
+      _getRoute(camp.location);
+    });
+    
+    _mapController.move(camp.location, 15.0);
+  }
+
+  Widget _buildTransportSelector() {
+    return Positioned(
+      bottom: 16,
+      left: 16,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.directions_car),
+                color: _transportMode == 'driving-car' ? Colors.blue : Colors.grey,
+                onPressed: () {
+                  setState(() {
+                    _transportMode = 'driving-car';
+                    if (_selectedCamp != null) _getRoute(_selectedCamp!.location);
+                  });
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.directions_walk),
+                color: _transportMode == 'foot-walking' ? Colors.blue : Colors.grey,
+                onPressed: () {
+                  setState(() {
+                    _transportMode = 'foot-walking';
+                    if (_selectedCamp != null) _getRoute(_selectedCamp!.location);
+                  });
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.directions_bike),
+                color: _transportMode == 'cycling-regular' ? Colors.blue : Colors.grey,
+                onPressed: () {
+                  setState(() {
+                    _transportMode = 'cycling-regular';
+                    if (_selectedCamp != null) _getRoute(_selectedCamp!.location);
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRouteInfo() {
+    if (_routeDistance == null || _routeDuration == null) return const SizedBox.shrink();
+
+    return Positioned(
+      top: 16,
+      left: 16,
+      right: 80,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Distance: $_routeDistance',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Duration: $_routeDuration',
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCampInfo() {
+    if (_selectedCamp == null) return const SizedBox.shrink();
+
+    return Positioned(
+      top: _routeDistance != null ? 120 : 16,
+      left: 16,
+      right: 80,
+      child: Card(
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _selectedCamp!.name,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text('Type: ${_selectedCamp!.type}'),
+              Text('Status: ${_selectedCamp!.status}'),
+              Text('Capacity: ${_selectedCamp!.capacity}'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Positioned(
+      top: 16,
+      left: 16,
+      right: 16,
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search location...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchResults = []);
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onChanged: (value) => _searchLocation(value),
+            ),
+          ),
+          if (_searchResults.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _searchResults.length,
+                itemBuilder: (context, index) {
+                  final result = _searchResults[index];
+                  return ListTile(
+                    title: Text(result.name),
+                    onTap: () => _selectSearchResult(result),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeatherInfo() {
+    if (_weather == null) return const SizedBox.shrink();
+
+    return Positioned(
+      top: 80,
+      right: 16,
+      child: Card(
+        elevation: 4,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.all(12),
+          width: _isWeatherExpanded ? 300 : 160,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${_weather!.temp.round()}°C',
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      _isWeatherExpanded ? Icons.chevron_right : Icons.chevron_left,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isWeatherExpanded = !_isWeatherExpanded;
+                      });
+                    },
+                  ),
+                  if (_isWeatherExpanded)
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Image.network(
+                          _weather!.iconUrl,
+                          width: 40,
+                          height: 40,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (_isWeatherExpanded) ...[
+                Text(
+                  _weather!.condition,
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const Divider(height: 16),
+                Row(
+                  children: [
+                    Text(
+                      'Feels like: ${_weather!.feelsLike.round()}°C',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Humidity: ${_weather!.humidity.round()}%',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    Text(
+                      'UV Index: ${_weather!.uv.round()}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Wind: ${_weather!.windSpeed.round()} km/h',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    Text(
+                      'Direction: ${_weather!.windDir}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Visibility: ${_weather!.visibility} km',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    Text(
+                      'Pressure: ${_weather!.pressure} mb',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final nearestCamp = _getNearestRescueCamp();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Thiruvananthapuram Rescue Map'),
-        backgroundColor: const Color(0xFF003366),
-        foregroundColor: Colors.white,
-      ),
-      body: _locationPermissionDenied
-          ? Center(
-              child: Text(
-                'Location permission denied. Please enable location to use the map.',
-                style: TextStyle(color: Colors.red[800]),
-                textAlign: TextAlign.center,
-              ),
-            )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      const Text('Route:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 12),
-                      DropdownButton<String>(
-                        value: _routeProfile,
-                        items: const [
-                          DropdownMenuItem(value: 'driving-car', child: Text('Car')),
-                          DropdownMenuItem(value: 'foot-walking', child: Text('Foot-walking')),
-                        ],
-                        onChanged: (value) async {
-                          if (value != null) {
-                            setState(() {
-                              _routeProfile = value;
-                            });
-                            await _fetchRouteToNearestCamp();
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: FlutterMap(
-                    options: MapOptions(
-                      center: _getInitialCenter(),
-                      zoom: 13.0,
-                      maxZoom: 18,
-                      minZoom: 10,
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        subdomains: const ['a', 'b', 'c'],
-                        userAgentPackageName: 'com.example.resq_link',
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          if (_userLocation != null)
-                            Marker(
-                              point: _userLocation!,
-                              width: 40,
-                              height: 40,
-                              child: const Icon(Icons.my_location, color: Colors.blue, size: 36),
-                            ),
-                          ..._rescueCamps.map((camp) => Marker(
-                                point: camp['position'] as LatLng,
-                                width: 40,
-                                height: 40,
-                                child: Column(
-                                  children: [
-                                    const Icon(Icons.school, color: Colors.red, size: 32),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(6),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.1),
-                                            blurRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        camp['name'],
-                                        style: const TextStyle(fontSize: 10, color: Colors.black),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )),
-                        ],
-                      ),
-                      if (_routePoints.isNotEmpty)
-                        PolylineLayer(
-                          polylines: [
-                            Polyline(
-                              points: _routePoints,
-                              color: Colors.blue,
-                              strokeWidth: 4,
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+      body: Stack(
+        children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              center: LatLng(10.8505, 76.2711), // Kerala center
+              zoom: 8.0,
+              onTap: _onMapTapped,
             ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                subdomains: const ['a', 'b', 'c'],
+              ),
+              MarkerLayer(
+                markers: [
+                  if (_currentPosition != null)
+                    Marker(
+                      width: 60,
+                      height: 60,
+                      point: LatLng(
+                        _currentPosition!.latitude,
+                        _currentPosition!.longitude,
+                      ),
+                      child: const Icon(
+                        Icons.my_location,
+                        color: Colors.blue,
+                        size: 40,
+                      ),
+                    ),
+                  if (_lastTappedLocation != null)
+                    Marker(
+                      width: 30,
+                      height: 30,
+                      point: _lastTappedLocation!,
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.orange,
+                        size: 30,
+                      ),
+                    ),
+                  ...camps.map(
+                    (camp) => Marker(
+                      width: 60,
+                      height: 60,
+                      point: camp.location,
+                      child: GestureDetector(
+                        onTap: () => _selectCamp(camp),
+                        child: Icon(
+                          Icons.local_hospital,
+                          color: _selectedCamp == camp ? Colors.blue : Colors.red,
+                          size: 40,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_selectedSearchLocation != null)
+                    Marker(
+                      width: 60,
+                      height: 60,
+                      point: _selectedSearchLocation!,
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.green,
+                        size: 40,
+                      ),
+                    ),
+                ],
+              ),
+              // Survivor markers
+              MarkerLayer(
+                markers: _survivors.map((survivor) => Marker(
+                  width: 60,
+                  height: 60,
+                  point: survivor.location,
+                  child: GestureDetector(
+                    onTap: () {
+                      _showSnackBar('SOS Alert from ${survivor.timestamp.toString()}');
+                      _getRoute(survivor.location);
+                    },
+                    child: const Icon(
+                      Icons.emergency,
+                      color: Colors.red,
+                      size: 30,
+                    ),
+                  ),
+                )).toList(),
+              ),
+              if (_routePoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 4,
+                      color: Colors.blue,
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          _buildSearchBar(),
+          if (_weather != null) _buildWeatherInfo(),
+          _buildTransportSelector(),
+          _buildRouteInfo(),
+          _buildCampInfo(),
+          if (_loading || _isCalculatingRoute || _isSearching)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: _refreshMap,
+            child: const Icon(Icons.refresh),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            onPressed: _getCurrentLocation,
+            child: const Icon(Icons.my_location),
+          ),
+        ],
+      ),
     );
   }
-} 
+}
