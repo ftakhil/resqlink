@@ -4,6 +4,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../user_session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../auth_page.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'dart:convert';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -19,11 +23,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String location = 'Unknown';
   String? avatarUrl;
   bool loading = true;
+  final _picker = ImagePicker();
+  Position? _currentPosition;
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return;
+        }
+      }
+
+      _currentPosition = await Geolocator.getCurrentPosition();
+      if (_currentPosition != null) {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+        );
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks[0];
+          setState(() {
+            location = '${place.locality}, ${place.administrativeArea}';
+          });
+        }
+      }
+    } catch (e) {
+      print('Error getting location: $e');
+    }
   }
 
   Future<void> _fetchUserData() async {
@@ -48,6 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         name = response['name'] ?? UserSession.name ?? '';
         phone = response['phone'] ?? UserSession.phone ?? '';
         email = response['email'] ?? userEmail;
+        avatarUrl = response['avatar_url'];
         loading = false;
       });
     } else {
@@ -64,13 +105,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('You'),
-        backgroundColor: const Color(0xFF003366),
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        actions: [
+          title: const Text('Profile', style: TextStyle(color: Colors.white)),
+          backgroundColor: const Color(0xFF003366),
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Logout',
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
@@ -100,30 +141,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 56,
-                        backgroundColor: Colors.grey[300],
-                        backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-                        child: avatarUrl == null
-                            ? const Icon(Icons.person, size: 64, color: Colors.white70)
-                            : null,
-                      ).animate().fadeIn(duration: 600.ms).scale(),
+                      GestureDetector(
+                        onTap: _pickImage,
+                        child: CircleAvatar(
+                          radius: 56,
+                          backgroundColor: Colors.grey[300],
+                          backgroundImage: avatarUrl != null ? MemoryImage(base64Decode(avatarUrl!.split(',')[1])) : null,
+                          child: avatarUrl == null
+                              ? const Icon(Icons.person, size: 64, color: Colors.white70)
+                              : null,
+                        ).animate().fadeIn(duration: 600.ms).scale(),
+                      ),
                       Positioned(
                         bottom: 0,
                         right: 0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: Icon(Icons.add_circle, color: Colors.blue[700], size: 32),
-                        ).animate().fadeIn(duration: 600.ms, delay: 200.ms).scale(),
+                        child: GestureDetector(
+                          onTap: _pickImage,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: Icon(Icons.add_circle, color: Colors.blue[700], size: 32),
+                          ).animate().fadeIn(duration: 600.ms, delay: 200.ms).scale(),
+                        ),
                       ),
                     ],
                   ),
@@ -146,7 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       const Text('Home', style: TextStyle(fontSize: 16, color: Colors.grey)),
                       ElevatedButton(
-                        onPressed: () {},
+                        onPressed: _showEditDialog,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF003366),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -158,6 +205,220 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Future<void> _updateProfile(String newName, String newPhone, String newEmail) async {
+    setState(() {
+      loading = true;
+    });
+
+    try {
+      final supabase = Supabase.instance.client;
+      final userEmail = UserSession.email;
+
+      if (userEmail != null) {
+        // First check if this email already exists for a different user
+        if (newEmail != userEmail) {
+          final existing = await supabase
+              .from('users')
+              .select()
+              .eq('email', newEmail)
+              .maybeSingle();
+          
+          if (existing != null) {
+            throw 'Email already in use';
+          }
+        }
+
+        // Update the user record using the current email as identifier
+        await supabase.from('users').update({
+          'name': newName,
+          'phone': newPhone,
+        }).eq('email', userEmail);
+
+        // If email is being changed, update it separately
+        if (newEmail != userEmail) {
+          await supabase.from('users').update({
+            'email': newEmail,
+          }).eq('email', userEmail);
+        }
+
+        UserSession.name = newName;
+        UserSession.phone = newPhone;
+        UserSession.email = newEmail;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_name', newName);
+        await prefs.setString('user_phone', newPhone);
+        await prefs.setString('user_email', newEmail);
+
+        setState(() {
+          name = newName;
+          phone = newPhone;
+          email = newEmail;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating profile: $e')),
+        );
+      }
+    } finally {
+      setState(() {
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 800, // Limit image size
+        maxHeight: 800,
+      );
+      if (image == null) return;
+
+      // Show loading indicator
+      setState(() {
+        loading = true;
+      });
+
+      // Print file information for debugging
+      print('Original file path: ${image.path}');
+      print('File name: ${image.name}');
+      
+      final supabase = Supabase.instance.client;
+      final bytes = await image.readAsBytes();
+      
+      // Ensure we're using a supported image type
+      final String mimeType;
+      if (image.mimeType?.toLowerCase().contains('png') ?? false) {
+        mimeType = 'image/png';
+      } else {
+        mimeType = 'image/jpeg';
+      }
+      print('Using MIME type: $mimeType');
+      
+      // Determine file extension from MIME type
+      final fileExt = mimeType == 'image/png' ? 'png' : 'jpg';
+      
+      // Generate a clean filename
+      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}_${email.hashCode}.$fileExt';
+      print('Generated filename: $fileName');
+
+      // Convert image to base64
+      final base64Image = base64Encode(bytes);
+      final imageUri = 'data:$mimeType;base64,$base64Image';
+
+      // Update user record with the base64 image data
+      await supabase.from('users').update({
+        'avatar_url': imageUri,
+      }).eq('email', email);
+
+      print('Image converted to base64');
+      
+      // Update the UI
+      if (mounted) {
+        setState(() {
+          avatarUrl = imageUri;
+        });
+      }
+      print('Profile photo updated successfully');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      // Hide loading indicator
+      if (mounted) {
+        setState(() {
+          loading = false;
+        });
+      }
+    }
+  }
+
+  void _showEditDialog() {
+    final TextEditingController nameController = TextEditingController(text: name);
+    final TextEditingController phoneController = TextEditingController(text: phone);
+    final TextEditingController emailController = TextEditingController(text: email);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: 'Phone'),
+                keyboardType: TextInputType.phone,
+              ),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // Validate inputs
+              final newName = nameController.text.trim();
+              final newPhone = phoneController.text.trim();
+              final newEmail = emailController.text.trim();
+
+              if (newName.isEmpty || newPhone.isEmpty || newEmail.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('All fields are required')),
+                );
+                return;
+              }
+
+              // Basic email validation
+              if (!newEmail.contains('@') || !newEmail.contains('.')) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid email address')),
+                );
+                return;
+              }
+
+              // Basic phone validation (at least 10 digits)
+              if (newPhone.replaceAll(RegExp(r'[^0-9]'), '').length < 10) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid phone number')),
+                );
+                return;
+              }
+
+              Navigator.pop(context);
+              await _updateProfile(newName, newPhone, newEmail);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
   }
 
