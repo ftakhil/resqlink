@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -12,54 +12,76 @@ class VoiceChatPage extends StatefulWidget {
 }
 
 class _VoiceChatPageState extends State<VoiceChatPage> {
-  final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _flutterTts = FlutterTts();
-  bool _isListening = false;
+  bool _isRecording = false;
   bool _isLoading = false;
   String _userMessage = '';
   String _aiReply = '';
-  String _partialResult = '';
-  List<Map<String, String>> _chat = [];
-  String _selectedLocaleId = 'en_US';
-  final Map<String, String> _supportedLanguages = {
-    'English': 'en_US',
-    'Hindi': 'hi_IN',
-    'Malayalam': 'ml_IN',
-    // Add more languages as needed
-  };
+  final List<Map<String, String>> _chat = [];
+  
+  MediaStream? _localStream;
+  RTCPeerConnection? _peerConnection;
+  List<int> _audioData = [];
 
-  Future<void> _toggleListening() async {
-    if (_isListening) {
-      // Stop listening and send message
-      await _speech.stop();
-      setState(() {
-        _isListening = false;
-        _userMessage = _partialResult;
-        _partialResult = '';
+  Future<void> _initializeWebRTC() async {
+    _peerConnection = await createPeerConnection({
+      'iceServers': [
+        {
+          'urls': 'stun:stun.l.google.com:19302',
+        }
+      ]
+    });
+
+    // Get audio stream
+    _localStream = await navigator.mediaDevices.getUserMedia({
+      'audio': true,
+      'video': false
+    });
+
+    // Add stream to peer connection
+    _localStream?.getTracks().forEach((track) {
+      _peerConnection?.addTrack(track, _localStream!);
+    });
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_isRecording) {
+      // Stop recording
+      _localStream?.getTracks().forEach((track) {
+        if (track.kind == 'audio') {
+          track.enabled = false;
+          track.stop();
+        }
       });
-      if (_userMessage.trim().isNotEmpty) {
-        setState(() {
-          _chat.add({'user': _userMessage});
-          _isLoading = true;
-        });
-        await _sendToWebhook(_userMessage);
-      }
+      
+      setState(() {
+        _isRecording = false;
+      });
+
+      // Process recorded audio
+      // Here you would typically send the audio data to your server
+      // For now, we'll simulate by sending a placeholder message
+      setState(() {
+        _userMessage = "Audio message recorded";
+        _chat.add({'user': _userMessage});
+        _isLoading = true;
+      });
+      await _sendToWebhook(_userMessage);
     } else {
-      bool available = await _speech.initialize();
-      if (available) {
-        setState(() {
-          _isListening = true;
-          _partialResult = '';
-        });
-        _speech.listen(
-          localeId: _selectedLocaleId,
-          onResult: (result) {
-            setState(() {
-              _partialResult = result.recognizedWords;
-            });
-          },
-        );
+      if (_localStream == null) {
+        await _initializeWebRTC();
       }
+
+      // Start recording
+      _localStream?.getTracks().forEach((track) {
+        if (track.kind == 'audio') {
+          track.enabled = true;
+        }
+      });
+      
+      setState(() {
+        _isRecording = true;
+      });
     }
   }
 
@@ -102,7 +124,12 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
 
   @override
   void dispose() {
-    _speech.stop();
+    _localStream?.getTracks().forEach((track) {
+      track.enabled = false;
+      track.stop();
+    });
+    _localStream?.dispose();
+    _peerConnection?.close();
     _flutterTts.stop();
     super.dispose();
   }
@@ -113,36 +140,12 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
       appBar: AppBar(title: const Text('Voice Chat')),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                const Text('Language: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                DropdownButton<String>(
-                  value: _selectedLocaleId,
-                  items: _supportedLanguages.entries.map((entry) {
-                    return DropdownMenuItem<String>(
-                      value: entry.value,
-                      child: Text(entry.key),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedLocaleId = value;
-                      });
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          if (_partialResult.isNotEmpty && _isListening)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          if (_isRecording)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(
-                _partialResult,
-                style: const TextStyle(fontSize: 18, color: Colors.black54, fontStyle: FontStyle.italic),
+                'Recording...',
+                style: TextStyle(fontSize: 18, color: Colors.red, fontWeight: FontWeight.bold),
               ),
             ),
           Expanded(
@@ -185,11 +188,11 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
           Padding(
             padding: const EdgeInsets.all(24),
             child: GestureDetector(
-              onTap: _toggleListening,
+              onTap: _toggleRecording,
               child: CircleAvatar(
                 radius: 36,
-                backgroundColor: _isListening ? Colors.red : Colors.blue,
-                child: Icon(
+                backgroundColor: _isRecording ? Colors.red : Colors.blue,
+                child: const Icon(
                   Icons.mic,
                   color: Colors.white,
                   size: 36,

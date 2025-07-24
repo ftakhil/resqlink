@@ -254,7 +254,7 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
       bodyWidget = const GuidePage(key: ValueKey('guide'));
     } else if (_selectedIndex == 4) {
       print('Building ProfileScreen');
-      bodyWidget = const ProfileScreen(key: ValueKey('profile'));
+      bodyWidget = ProfileScreen(key: const ValueKey('profile'));
     } else {
       print('Building HomePage');
       bodyWidget = SafeArea(key: const ValueKey('home'),
@@ -330,26 +330,13 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                 ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
                 const SizedBox(height: 48), // Increased space above SOS
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     ActionIconButton(
                       backgroundColor: Colors.green,
                       icon: Icons.phone,
                       label: 'Phone',
                       onTap: () {},
-                      iconSize: 40, // Increased icon size
-                      avatarRadius: 36, // Increased avatar size
-                    ),
-                    ActionIconButton(
-                      backgroundColor: Colors.blue,
-                      icon: Icons.mic,
-                      label: 'Voice',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const VoiceChatPage()),
-                        );
-                      },
                       iconSize: 40, // Increased icon size
                       avatarRadius: 36, // Increased avatar size
                     ),

@@ -27,10 +27,11 @@ dependencies:
   just_audio: ^0.9.36
   flutter_local_notifications: ^17.1.2
   permission_handler: ^11.3.1
-  speech_to_text: ^6.3.0
   flutter_tts: ^3.8.5
   url_launcher: ^6.2.5
   flutter_dotenv: ^5.1.0
+  flutter_webrtc: ^0.14.2
+  http_parser: ^4.1.2
 
 dev_dependencies:
   flutter_test:

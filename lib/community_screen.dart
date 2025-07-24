@@ -30,7 +30,7 @@ class CommunityScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Community Connect'),
         leading: Navigator.canPop(context)
-            ? BackButton()
+            ? const BackButton()
             : null,
       ),
       body: Column(

@@ -17,7 +17,7 @@ class RegionDetailsScreen extends StatelessWidget {
       {'name': 'Camp Alpha', 'location': 'Govt. School, Main Road'},
       {'name': 'Camp Beta', 'location': 'Community Hall, Market Area'},
     ];
-    final TextEditingController _controller = TextEditingController();
+    final TextEditingController controller = TextEditingController();
     return Scaffold(
       appBar: AppBar(
         title: Text(regionName),
@@ -63,7 +63,7 @@ class RegionDetailsScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _controller,
+                    controller: controller,
                     decoration: const InputDecoration(
                       hintText: 'Type your message...',
                       border: OutlineInputBorder(),

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ChatMessage {
@@ -120,7 +121,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     });
 
     try {
-      var uri = Uri.parse('http://localhost:5678/webhook-test/medical-image');
+      var uri = Uri.parse('https://razyeryt.app.n8n.cloud/webhook/medical-image');
       var request = http.MultipartRequest('POST', uri);
 
       if (kIsWeb) {
@@ -130,6 +131,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
             'image',
             bytes,
             filename: 'image.jpg',
+            contentType: MediaType('image', 'jpeg'),
           ),
         );
       } else {
@@ -137,6 +139,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
           await http.MultipartFile.fromPath(
             'image',
             _pickedFile!.path,
+            contentType: MediaType('image', 'jpeg'),
           ),
         );
       }
@@ -243,7 +246,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
             if (!message.isUser)
               RichText(
                 text: TextSpan(
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 15,
                     color: Colors.black87,
                     height: 1.4,
@@ -256,7 +259,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
             else
               Text(
                 message.message,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 15,
                   color: Colors.white,
                   height: 1.4,
@@ -285,30 +288,28 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     final parts = response.split(RegExp(r'(\*\*)'));
     bool isBold = false;
     
-    for (var part in parts) {
-      if (part.isNotEmpty) {
-        if (part != '**') {
-          // Handle each line in the part
-          final lines = part.split('\n');
-          for (var i = 0; i < lines.length; i++) {
-            final line = lines[i].trim();
-            if (line.isNotEmpty) {
-              spans.add(TextSpan(
-                text: line,
-                style: TextStyle(
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-              ));
-            }
-            // Add newline if not the last line
-            if (i < lines.length - 1) {
-              spans.add(const TextSpan(text: '\n'));
-            }
-          }
-        }
+    for (var i = 0; i < parts.length; i++) {
+      final part = parts[i];
+      if (part.isEmpty) {
+        isBold = !isBold;
+        continue;
       }
+      
+      if (part == '**') {
+        isBold = !isBold;
+        continue;
+      }
+
+      // Preserve all whitespace and newlines
+      spans.add(TextSpan(
+        text: part,
+        style: TextStyle(
+          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          fontSize: 16,
+          height: 1.5,
+        ),
+      ));
+      
       isBold = !isBold;
     }
     
@@ -331,7 +332,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
         ),
         centerTitle: true,
       ),
-      backgroundColor: Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF5F5F5),
       body: Column(
         children: [
           Expanded(
@@ -385,34 +386,8 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
             ),
             child: SafeArea(
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.camera_alt_outlined,
-                            color: Colors.grey[600],
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Take or upload a photo',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Material(
                     color: Theme.of(context).primaryColor,
                     borderRadius: BorderRadius.circular(24),
@@ -424,28 +399,28 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
                         }
                       },
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(16),
                         child: const Icon(
                           Icons.camera_alt,
                           color: Colors.white,
-                          size: 24,
+                          size: 28,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 20),
                   Material(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    color: Theme.of(context).primaryColor,
                     borderRadius: BorderRadius.circular(24),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(24),
                       onTap: () => _pickImage(ImageSource.gallery),
                       child: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(
+                        padding: const EdgeInsets.all(16),
+                        child: const Icon(
                           Icons.photo_library,
-                          color: Theme.of(context).primaryColor,
-                          size: 24,
+                          color: Colors.white,
+                          size: 28,
                         ),
                       ),
                     ),
