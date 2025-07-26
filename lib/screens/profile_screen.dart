@@ -107,11 +107,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: const Text('Profile', style: TextStyle(color: Colors.white)),
-          backgroundColor: const Color(0xFF003366),
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          actions: [
+        title: const Text('Profile', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF003366),
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
             tooltip: 'Logout',
@@ -135,82 +135,114 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 16),
-                  Stack(
-                    children: [
-                      GestureDetector(
-                        onTap: _pickImage,
-                        child: CircleAvatar(
-                          radius: 56,
-                          backgroundColor: Colors.grey[300],
-                          backgroundImage: avatarUrl != null ? MemoryImage(base64Decode(avatarUrl!.split(',')[1])) : null,
-                          child: avatarUrl == null
-                              ? const Icon(Icons.person, size: 64, color: Colors.white70)
-                              : null,
-                        ).animate().fadeIn(duration: 600.ms).scale(),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0, vertical: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 16),
+                    Stack(
+                      children: [
+                        GestureDetector(
                           onTap: _pickImage,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 2,
-                                ),
-                              ],
+                          child: CircleAvatar(
+                            radius: 56,
+                            backgroundColor: Colors.grey[300],
+                            backgroundImage: avatarUrl != null
+                                ? MemoryImage(
+                                    base64Decode(avatarUrl!.split(',')[1]))
+                                : null,
+                            child: avatarUrl == null
+                                ? const Icon(Icons.person,
+                                    size: 64, color: Colors.white70)
+                                : null,
+                          ).animate().fadeIn(duration: 600.ms).scale(),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: GestureDetector(
+                            onTap: _pickImage,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(Icons.add_circle,
+                                  color: Colors.blue[700], size: 32),
+                            )
+                                .animate()
+                                .fadeIn(duration: 600.ms, delay: 200.ms)
+                                .scale(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      name.isNotEmpty ? name : 'Your Name',
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold),
+                    )
+                        .animate()
+                        .fadeIn(duration: 600.ms, delay: 100.ms)
+                        .slideY(begin: 0.2),
+                    const SizedBox(height: 32),
+                    _profile3DBox(
+                        'Name', name.isNotEmpty ? name : '---', Icons.person),
+                    const SizedBox(height: 18),
+                    _profile3DBox(
+                        'Phone', phone.isNotEmpty ? phone : '---', Icons.phone),
+                    const SizedBox(height: 18),
+                    _profile3DBox(
+                        'Gmail', email.isNotEmpty ? email : '---', Icons.email),
+                    const SizedBox(height: 18),
+                    _profile3DBox(
+                        'Location',
+                        location.isNotEmpty ? location : '---',
+                        Icons.location_on),
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 24.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Home',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.grey)),
+                          ElevatedButton(
+                            onPressed: _showEditDialog,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF003366),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
-                            child: Icon(Icons.add_circle, color: Colors.blue[700], size: 32),
-                          ).animate().fadeIn(duration: 600.ms, delay: 200.ms).scale(),
-                        ),
+                            child: const Text('Edit',
+                                style: TextStyle(color: Colors.white)),
+                          )
+                              .animate()
+                              .fadeIn(duration: 600.ms, delay: 200.ms)
+                              .slideX(begin: 0.2),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    name.isNotEmpty ? name : 'Your Name',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ).animate().fadeIn(duration: 600.ms, delay: 100.ms).slideY(begin: 0.2),
-                  const SizedBox(height: 32),
-                  _profile3DBox('Name', name.isNotEmpty ? name : '---', Icons.person),
-                  const SizedBox(height: 18),
-                  _profile3DBox('Phone', phone.isNotEmpty ? phone : '---', Icons.phone),
-                  const SizedBox(height: 18),
-                  _profile3DBox('Gmail', email.isNotEmpty ? email : '---', Icons.email),
-                  const SizedBox(height: 18),
-                  _profile3DBox('Location', location.isNotEmpty ? location : '---', Icons.location_on),
-                  const Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Home', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                      ElevatedButton(
-                        onPressed: _showEditDialog,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF003366),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('Edit', style: TextStyle(color: Colors.white)),
-                      ).animate().fadeIn(duration: 600.ms, delay: 200.ms).slideX(begin: 0.2),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
     );
   }
 
-  Future<void> _updateProfile(String newName, String newPhone, String newEmail) async {
+  Future<void> _updateProfile(
+      String newName, String newPhone, String newEmail) async {
     setState(() {
       loading = true;
     });
@@ -227,7 +259,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .select()
               .eq('email', newEmail)
               .maybeSingle();
-          
+
           if (existing != null) {
             throw 'Email already in use';
           }
@@ -292,10 +324,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Print file information for debugging
       print('Original file path: ${image.path}');
       print('File name: ${image.name}');
-      
+
       final supabase = Supabase.instance.client;
       final bytes = await image.readAsBytes();
-      
+
       // Ensure we're using a supported image type
       final String mimeType;
       if (image.mimeType?.toLowerCase().contains('png') ?? false) {
@@ -304,12 +336,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         mimeType = 'image/jpeg';
       }
       print('Using MIME type: $mimeType');
-      
+
       // Determine file extension from MIME type
       final fileExt = mimeType == 'image/png' ? 'png' : 'jpg';
-      
+
       // Generate a clean filename
-      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}_${email.hashCode}.$fileExt';
+      final fileName =
+          'avatar_${DateTime.now().millisecondsSinceEpoch}_${email.hashCode}.$fileExt';
       print('Generated filename: $fileName');
 
       // Convert image to base64
@@ -322,7 +355,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }).eq('email', email);
 
       print('Image converted to base64');
-      
+
       // Update the UI
       if (mounted) {
         setState(() {
@@ -350,9 +383,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditDialog() {
-    final TextEditingController nameController = TextEditingController(text: name);
-    final TextEditingController phoneController = TextEditingController(text: phone);
-    final TextEditingController emailController = TextEditingController(text: email);
+    final TextEditingController nameController =
+        TextEditingController(text: name);
+    final TextEditingController phoneController =
+        TextEditingController(text: phone);
+    final TextEditingController emailController =
+        TextEditingController(text: email);
 
     showDialog(
       context: context,
@@ -401,7 +437,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Basic email validation
               if (!newEmail.contains('@') || !newEmail.contains('.')) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid email address')),
+                  const SnackBar(
+                      content: Text('Please enter a valid email address')),
                 );
                 return;
               }
@@ -409,7 +446,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Basic phone validation (at least 10 digits)
               if (newPhone.replaceAll(RegExp(r'[^0-9]'), '').length < 10) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid phone number')),
+                  const SnackBar(
+                      content: Text('Please enter a valid phone number')),
                 );
                 return;
               }
@@ -443,7 +481,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             offset: const Offset(0, 1),
           ),
         ],
-        border: Border.all(color: const Color(0xFF003366).withOpacity(0.08), width: 1.2),
+        border: Border.all(
+            color: const Color(0xFF003366).withOpacity(0.08), width: 1.2),
       ),
       child: Row(
         children: [
@@ -460,9 +499,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500)),
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF003366))),
+                Text(value,
+                    style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF003366))),
               ],
             ),
           ),
@@ -470,4 +517,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1);
   }
-} 
+}
