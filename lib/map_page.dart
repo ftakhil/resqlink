@@ -133,7 +133,7 @@ class _MapPageState extends State<MapPage> {
   String? _locationName;
   String? _stateName;
   String? _disasterRisk;
-  String? _fullLocationName;
+  String? _exactPlaceName;
 
   Future<void> _getLocationDetails(LatLng point) async {
     try {
@@ -144,32 +144,19 @@ class _MapPageState extends State<MapPage> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final address = data['address'] ?? {};
-        String? road = address['road'];
-        String? village = address['village'] ??
-            address['suburb'] ??
-            address['town'] ??
-            address['city'] ??
-            address['locality'];
-        String? state = address['state'];
-        String? fullLoc;
-        if (road != null && village != null && state != null) {
-          fullLoc = '$road, $village, $state';
-        } else if (village != null && state != null) {
-          fullLoc = '$village, $state';
-        } else if (state != null) {
-          fullLoc = state;
-        } else {
-          fullLoc = data['display_name'] ?? 'Unknown Location';
-        }
         setState(() {
           _locationName = data['name'] ??
-              road ??
-              village ??
               data['display_name']?.split(',')[0] ??
               'Unknown Location';
-          _stateName = state ?? 'Unknown State';
-          _fullLocationName = fullLoc;
+          _stateName = data['address']?['state'] ?? 'Unknown State';
+          final address = data['address'] ?? {};
+          _exactPlaceName = address['road'] ??
+              address['village'] ??
+              address['town'] ??
+              address['suburb'] ??
+              address['city'] ??
+              address['hamlet'] ??
+              null;
           // Dummy logic for disaster risk based on location
           final random = point.latitude.abs() % 4;
           _disasterRisk = random < 1
@@ -643,148 +630,29 @@ class _MapPageState extends State<MapPage> {
       child: GestureDetector(
         onTap: () {
           setState(() {
-            _isWeatherExpanded = !_isWeatherExpanded;
+            if (_isWeatherExpanded) {
+              _isWeatherExpanded = false;
+              _isWeatherCompact = true;
+            } else if (_isWeatherCompact) {
+              _isWeatherExpanded = true;
+              _isWeatherCompact = false;
+            }
           });
         },
         child: Card(
           elevation: 4,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          color: Colors.white.withOpacity(0.85),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
-            width: 400,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header row - always visible
-                Row(
-                  children: [
-                    // Temperature and weather icon
-                    Text(
-                      '${_weather!.temp.round()}°C',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Image.network(
-                      _weather!.iconUrl,
-                      width: 28,
-                      height: 28,
-                    ),
-                    const Text(
-                      ' | ',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      _weather!.condition,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Text(
-                      ' | ',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        _fullLocationName ??
-                            _locationName ??
-                            'Unknown Location',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Icon(
-                      _isWeatherExpanded
-                          ? Icons.expand_less
-                          : Icons.expand_more,
-                      size: 20,
-                      color: Colors.grey,
-                    ),
-                  ],
-                ),
-                // Animated details section
-                AnimatedCrossFade(
-                  duration: const Duration(milliseconds: 300),
-                  crossFadeState: _isWeatherExpanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Column(
-                      children: [
-                        const Divider(height: 1),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildDetailItem(
-                              'Feels like',
-                              '${_weather!.feelsLike.round()}°C',
-                            ),
-                            _buildDetailItem(
-                              'Humidity',
-                              '${_weather!.humidity.round()}%',
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildDetailItem(
-                              'Wind',
-                              '${_weather!.windSpeed.round()} km/h ${_weather!.windDir}',
-                            ),
-                            _buildDetailItem(
-                              'UV Index',
-                              _weather!.uv.round().toString(),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _buildDetailItem(
-                              'Visibility',
-                              '${_weather!.visibility} km',
-                            ),
-                            _buildDetailItem(
-                              'Pressure',
-                              '${_weather!.pressure} mb',
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            alignment: Alignment.topCenter,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 300),
+              padding: const EdgeInsets.all(12),
+              child: _isWeatherExpanded
+                  ? _buildExpandedWeatherSafe()
+                  : _buildCompactWeatherSafe(),
             ),
           ),
         ),
@@ -792,24 +660,188 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Widget _buildDetailItem(String label, String value) {
+  Widget _buildCompactWeatherSafe() {
+    final temp = _weather?.temp?.round() ?? '--';
+    final iconUrl = _weather?.iconUrl ?? '';
+    final condition = _weather?.condition ?? '';
+    final location = _locationName ?? 'Unknown Location';
+    final state = _stateName ?? '';
+    final exactPlace = _exactPlaceName ?? '';
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$temp°C',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (iconUrl.isNotEmpty)
+              Image.network(
+                iconUrl,
+                width: 32,
+                height: 32,
+              ),
+            const SizedBox(width: 8),
+            AnimatedRotation(
+              duration: const Duration(milliseconds: 250),
+              turns: _isWeatherExpanded ? 0.5 : 0,
+              child: const Icon(
+                Icons.keyboard_arrow_down,
+                size: 20,
+                color: Colors.grey,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+          condition,
+          style: const TextStyle(fontSize: 14),
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (exactPlace.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 2),
+            child: Text(
+              exactPlace,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontSize: 16,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+        if (state.isNotEmpty)
+          Text(
+            state,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildExpandedWeatherSafe() {
+    final temp = _weather?.temp?.round() ?? '--';
+    final iconUrl = _weather?.iconUrl ?? '';
+    final condition = _weather?.condition ?? '';
+    final location = _locationName ?? 'Unknown Location';
+    final state = _stateName ?? '';
+    final exactPlace = _exactPlaceName ?? '';
+    final feelsLike = _weather?.feelsLike?.round() ?? '--';
+    final humidity = _weather?.humidity?.round() ?? '--';
+    final windSpeed = _weather?.windSpeed?.round() ?? '--';
+    final windDir = _weather?.windDir ?? '';
+    final uv = _weather?.uv?.round() ?? '--';
+    final visibility = _weather?.visibility ?? '--';
+    final pressure = _weather?.pressure ?? '--';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$temp°C',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (iconUrl.isNotEmpty)
+              Image.network(
+                iconUrl,
+                width: 32,
+                height: 32,
+              ),
+            const SizedBox(width: 8),
+            AnimatedRotation(
+              duration: const Duration(milliseconds: 250),
+              turns: _isWeatherExpanded ? 0.5 : 0,
+              child: const Icon(
+                Icons.keyboard_arrow_down,
+                size: 20,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          condition,
+          style: const TextStyle(fontSize: 14),
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (exactPlace.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 2),
+            child: Text(
+              exactPlace,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                fontSize: 16,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        if (state.isNotEmpty)
+          Text(
+            state,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        const Divider(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Feels like: $feelsLike°C',
+              style: const TextStyle(fontSize: 12),
+            ),
+            Text(
+              'Humidity: $humidity%',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Wind: $windSpeed km/h $windDir',
+              style: const TextStyle(fontSize: 12),
+            ),
+            Text(
+              'UV: $uv',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Visibility: $visibility km',
+              style: const TextStyle(fontSize: 12),
+            ),
+            Text(
+              'Pressure: $pressure mb',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
         ),
       ],
     );
