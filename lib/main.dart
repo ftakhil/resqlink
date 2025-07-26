@@ -19,6 +19,7 @@ import 'screens/voice_chat_page.dart';
 import 'screens/medical_chat_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'widgets/weather_widget.dart';
+import 'user_session.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,7 @@ void main() async {
   print('Supabase initialized');
   runApp(const ResQLinkApp());
 }
+
 class ResQLinkApp extends StatelessWidget {
   const ResQLinkApp({super.key});
 
@@ -76,15 +78,44 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
 
   String? _notificationMsg;
   bool _notificationLoading = true;
-  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
   Stream<List<Map<String, dynamic>>>? _alertStream;
 
   @override
   void initState() {
     super.initState();
+    _requestLocationPermission();
     _fetchNotification();
     _initializeNotifications();
     _listenToEmergencyAlert();
+  }
+
+  Future<void> _requestLocationPermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Location Permission Required'),
+              content: const Text(
+                  'This app needs location access to show the map and your position.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _fetchNotification() async {
@@ -111,11 +142,20 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
 
   void _listenToEmergencyAlert() {
     final supabase = Supabase.instance.client;
-    _alertStream = supabase
-      .from('alerts')
-      .stream(primaryKey: ['id']);
+    _alertStream = supabase.from('alerts').stream(primaryKey: ['id']);
     _alertStream!.listen((data) {
       if (data.isNotEmpty && data.last['alert'] == 'yes') {
+        _emergencyAlert();
+      }
+    });
+    // Listen to sensor_data table for alert column
+    final sensorStream =
+        supabase.from('sensor_data').stream(primaryKey: ['id']);
+    sensorStream.listen((data) {
+      if (data.isNotEmpty &&
+          (data.last['alert'] == true ||
+              data.last['alert'] == 'true' ||
+              data.last['alert'] == 1)) {
         _emergencyAlert();
       }
     });
@@ -124,7 +164,8 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
   Future<void> _initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
     );
     await _notificationsPlugin.initialize(initializationSettings);
@@ -180,7 +221,6 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     } catch (e) {}
   }
 
-
   Future<void> _onSosPressed() async {
     // Get location
     Position? position;
@@ -191,9 +231,12 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (serviceEnabled && (permission == LocationPermission.always || permission == LocationPermission.whileInUse)) {
-        position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-        locationMsg = 'Lat:  A${position.latitude}, Long: ${position.longitude}';
+      if (serviceEnabled &&
+          (permission == LocationPermission.always ||
+              permission == LocationPermission.whileInUse)) {
+        position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
+        locationMsg = 'Lat: ${position.latitude}, Long: ${position.longitude}';
       } else {
         locationMsg = 'Location permission denied or service disabled.';
       }
@@ -217,14 +260,27 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     );
     // Send alert to Supabase
     final supabase = Supabase.instance.client;
-    await supabase.from('alerts').insert({
-      'alert': 'yes',
-      'latitude': position?.latitude,
-      'longitude': position?.longitude,
-      'created_at': DateTime.now().toIso8601String(),
-    });
-    // Optionally, trigger local emergency alert
-    await _emergencyAlert();
+    try {
+      await supabase.from('alerts').insert({
+        'alert': 'yes',
+        'latitude': position?.latitude,
+        'longitude': position?.longitude,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      print('Supabase alerts table error (ignored): $e');
+    }
+    // Save location to user table
+    if (position != null && UserSession.email != null) {
+      try {
+        await supabase.from('users').update({
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+        }).eq('email', UserSession.email as String);
+      } catch (e) {
+        print('Error updating user location: $e');
+      }
+    }
   }
 
   @override
@@ -254,10 +310,11 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
       bodyWidget = const GuidePage(key: ValueKey('guide'));
     } else if (_selectedIndex == 4) {
       print('Building ProfileScreen');
-      bodyWidget = ProfileScreen(key: const ValueKey('profile'));
+      bodyWidget = const ProfileScreen(key: ValueKey('profile'));
     } else {
       print('Building HomePage');
-      bodyWidget = SafeArea(key: const ValueKey('home'),
+      bodyWidget = SafeArea(
+        key: const ValueKey('home'),
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -266,25 +323,25 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
               children: [
                 const SizedBox(height: 16),
                 _notificationLoading
-                  ? const AlertCard(
-                      backgroundColor: Color(0xFF003366),
-                      icon: Icons.notifications_active_outlined,
-                      text: "Loading notification...",
-                      iconColor: Colors.white,
-                      textColor: Colors.white,
-                    )
-                  : AlertCard(
-                      backgroundColor: const Color(0xFF003366),
-                      icon: Icons.notifications_active_outlined,
-                      text: _notificationMsg ?? "No notifications.",
-                      iconColor: Colors.white,
-                      textColor: Colors.white,
-                    ),
+                    ? const AlertCard(
+                        backgroundColor: Color(0xFF003366),
+                        icon: Icons.notifications_active_outlined,
+                        text: "Loading notification...",
+                        iconColor: Colors.white,
+                        textColor: Colors.white,
+                      )
+                    : AlertCard(
+                        backgroundColor: const Color(0xFF003366),
+                        icon: Icons.notifications_active_outlined,
+                        text: _notificationMsg ?? "No notifications.",
+                        iconColor: Colors.white,
+                        textColor: Colors.white,
+                      ),
                 const SizedBox(height: 12),
                 const WeatherWidget()
-                  .animate()
-                  .fadeIn(duration: 500.ms, delay: 200.ms)
-                  .slideY(begin: -0.2),
+                    .animate()
+                    .fadeIn(duration: 500.ms, delay: 200.ms)
+                    .slideY(begin: -0.2),
                 const SizedBox(height: 28),
                 Center(
                   child: ConstrainedBox(
@@ -349,7 +406,10 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                       avatarRadius: 36, // Increased avatar size
                     ),
                   ],
-                ).animate().fadeIn(duration: 500.ms, delay: 400.ms).slideY(begin: 0.5),
+                )
+                    .animate()
+                    .fadeIn(duration: 500.ms, delay: 400.ms)
+                    .slideY(begin: 0.5),
                 const SizedBox(height: 20),
               ],
             ),
