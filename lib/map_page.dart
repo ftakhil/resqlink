@@ -115,27 +115,83 @@ class _MapPageState extends State<MapPage> {
   bool _loading = false;
   List<LatLng> _routePoints = [];
   Camp? _selectedCamp;
-  String _transportMode = 'driving-car';
   String? _routeDistance;
   String? _routeDuration;
   bool _isCalculatingRoute = false;
-  
+
   // State variables
   final TextEditingController _searchController = TextEditingController();
   List<SearchResult> _searchResults = [];
   bool _isSearching = false;
   Weather? _weather;
   bool _isWeatherExpanded = true;
+  bool _isWeatherCompact = false;
   List<Survivor> _survivors = [];
   Timer? _survivorUpdateTimer;
   LatLng? _selectedSearchLocation;
   LatLng? _lastTappedLocation;
+  String? _locationName;
+  String? _stateName;
+  String? _disasterRisk;
+  String? _fullLocationName;
+
+  Future<void> _getLocationDetails(LatLng point) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'https://nominatim.openstreetmap.org/reverse?format=json&lat=${point.latitude}&lon=${point.longitude}'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final address = data['address'] ?? {};
+        String? road = address['road'];
+        String? village = address['village'] ??
+            address['suburb'] ??
+            address['town'] ??
+            address['city'] ??
+            address['locality'];
+        String? state = address['state'];
+        String? fullLoc;
+        if (road != null && village != null && state != null) {
+          fullLoc = '$road, $village, $state';
+        } else if (village != null && state != null) {
+          fullLoc = '$village, $state';
+        } else if (state != null) {
+          fullLoc = state;
+        } else {
+          fullLoc = data['display_name'] ?? 'Unknown Location';
+        }
+        setState(() {
+          _locationName = data['name'] ??
+              road ??
+              village ??
+              data['display_name']?.split(',')[0] ??
+              'Unknown Location';
+          _stateName = state ?? 'Unknown State';
+          _fullLocationName = fullLoc;
+          // Dummy logic for disaster risk based on location
+          final random = point.latitude.abs() % 4;
+          _disasterRisk = random < 1
+              ? 'Low'
+              : random < 2
+                  ? 'Medium'
+                  : random < 3
+                      ? 'High'
+                      : 'Very High';
+        });
+      }
+    } catch (e) {
+      print('Error getting location details: $e');
+    }
+  }
 
   void _onMapTapped(TapPosition tapPosition, LatLng point) {
     setState(() {
       _lastTappedLocation = point;
     });
     _getWeather(point);
+    _getLocationDetails(point);
   }
 
   Future<void> _refreshMap() async {
@@ -201,11 +257,10 @@ class _MapPageState extends State<MapPage> {
         _showSnackBar('Weather API key not found');
         return;
       }
-      
+
       final response = await http.get(
         Uri.parse(
-          'https://api.weatherapi.com/v1/current.json?key=$apiKey&q=${location.latitude},${location.longitude}&aqi=no'
-        ),
+            'https://api.weatherapi.com/v1/current.json?key=$apiKey&q=${location.latitude},${location.longitude}&aqi=no'),
       );
 
       if (response.statusCode == 200) {
@@ -233,16 +288,17 @@ class _MapPageState extends State<MapPage> {
     }
 
     setState(() => _isSearching = true);
-    
+
     try {
       final response = await http.get(
-        Uri.parse('https://api.openrouteservice.org/geocode/search?api_key=${dotenv.env['OPENROUTE_API_KEY']}&text=$query'),
+        Uri.parse(
+            'https://api.openrouteservice.org/geocode/search?api_key=${dotenv.env['OPENROUTE_API_KEY']}&text=$query'),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final features = data['features'] as List;
-        
+
         setState(() {
           _searchResults = features.map((feature) {
             final coordinates = feature['geometry']['coordinates'] as List;
@@ -266,16 +322,17 @@ class _MapPageState extends State<MapPage> {
       _searchResults = [];
       _searchController.text = result.name;
     });
-    
+
     _mapController.move(result.location, 15.0);
     _getWeather(result.location);
+    _getLocationDetails(result.location);
     _getRoute(result.location);
   }
 
   Future<void> _startSurvivorUpdates() async {
     // Initial load
     await _updateSurvivors();
-    
+
     // Set up periodic updates
     _survivorUpdateTimer = Timer.periodic(
       const Duration(seconds: 30),
@@ -294,9 +351,8 @@ class _MapPageState extends State<MapPage> {
           .limit(50);
 
       setState(() {
-        _survivors = (response as List)
-            .map((data) => Survivor.fromJson(data))
-            .toList();
+        _survivors =
+            (response as List).map((data) => Survivor.fromJson(data)).toList();
       });
     } catch (e) {
       print('Supabase error: $e');
@@ -351,7 +407,7 @@ class _MapPageState extends State<MapPage> {
 
     setState(() => _isCalculatingRoute = true);
     final apiKey = dotenv.env['OPENROUTE_API_KEY'];
-    
+
     if (apiKey == null) {
       _showSnackBar('API key not found');
       return;
@@ -359,18 +415,19 @@ class _MapPageState extends State<MapPage> {
 
     final start = [_currentPosition!.longitude, _currentPosition!.latitude];
     final end = [destination.longitude, destination.latitude];
-    
+
     final body = {
       "coordinates": [start, end],
       "instructions": true,
-      "preference": _transportMode,
+      "preference": 'driving-car', // Default to driving-car
       "units": "km",
       "language": "en"
     };
 
     try {
-      final url = Uri.parse('https://api.openrouteservice.org/v2/directions/$_transportMode');
-      
+      final url = Uri.parse(
+          'https://api.openrouteservice.org/v2/directions/driving-car');
+
       final response = await http.post(
         url,
         headers: {
@@ -385,9 +442,10 @@ class _MapPageState extends State<MapPage> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final coordinates = data['routes'][0]['geometry']['coordinates'] as List;
+        final coordinates =
+            data['routes'][0]['geometry']['coordinates'] as List;
         final summary = data['routes'][0]['summary'];
-        
+
         final distance = summary['distance']; // in meters
         final duration = summary['duration']; // in seconds
 
@@ -395,9 +453,9 @@ class _MapPageState extends State<MapPage> {
           _routePoints = coordinates
               .map((coord) => LatLng(coord[1] as double, coord[0] as double))
               .toList();
-          
+
           // Format distance
-          _routeDistance = distance > 1000 
+          _routeDistance = distance > 1000
               ? '${(distance / 1000).toStringAsFixed(1)} km'
               : '${distance.toStringAsFixed(0)} m';
 
@@ -427,7 +485,7 @@ class _MapPageState extends State<MapPage> {
 
   void _fitRoute() {
     if (_routePoints.isEmpty) return;
-    
+
     final bounds = LatLngBounds.fromPoints(_routePoints);
     _mapController.fitBounds(
       bounds,
@@ -440,59 +498,13 @@ class _MapPageState extends State<MapPage> {
       _selectedCamp = camp;
       _getRoute(camp.location);
     });
-    
+
     _mapController.move(camp.location, 15.0);
   }
 
-  Widget _buildTransportSelector() {
-    return Positioned(
-      bottom: 16,
-      left: 16,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.directions_car),
-                color: _transportMode == 'driving-car' ? Colors.blue : Colors.grey,
-                onPressed: () {
-                  setState(() {
-                    _transportMode = 'driving-car';
-                    if (_selectedCamp != null) _getRoute(_selectedCamp!.location);
-                  });
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.directions_walk),
-                color: _transportMode == 'foot-walking' ? Colors.blue : Colors.grey,
-                onPressed: () {
-                  setState(() {
-                    _transportMode = 'foot-walking';
-                    if (_selectedCamp != null) _getRoute(_selectedCamp!.location);
-                  });
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.directions_bike),
-                color: _transportMode == 'cycling-regular' ? Colors.blue : Colors.grey,
-                onPressed: () {
-                  setState(() {
-                    _transportMode = 'cycling-regular';
-                    if (_selectedCamp != null) _getRoute(_selectedCamp!.location);
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildRouteInfo() {
-    if (_routeDistance == null || _routeDuration == null) return const SizedBox.shrink();
+    if (_routeDistance == null || _routeDuration == null)
+      return const SizedBox.shrink();
 
     return Positioned(
       top: 16,
@@ -506,7 +518,8 @@ class _MapPageState extends State<MapPage> {
             children: [
               Text(
                 'Distance: $_routeDistance',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
@@ -536,7 +549,8 @@ class _MapPageState extends State<MapPage> {
             children: [
               Text(
                 _selectedCamp!.name,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text('Type: ${_selectedCamp!.type}'),
@@ -583,7 +597,8 @@ class _MapPageState extends State<MapPage> {
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
               onChanged: (value) => _searchLocation(value),
             ),
@@ -625,113 +640,178 @@ class _MapPageState extends State<MapPage> {
     return Positioned(
       top: 80,
       right: 16,
-      child: Card(
-        elevation: 4,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.all(12),
-          width: _isWeatherExpanded ? 300 : 160,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${_weather!.temp.round()}°C',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      _isWeatherExpanded ? Icons.chevron_right : Icons.chevron_left,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isWeatherExpanded = !_isWeatherExpanded;
-                      });
-                    },
-                  ),
-                  if (_isWeatherExpanded)
-                    Flexible(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Image.network(
-                          _weather!.iconUrl,
-                          width: 40,
-                          height: 40,
-                        ),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _isWeatherExpanded = !_isWeatherExpanded;
+          });
+        },
+        child: Card(
+          elevation: 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: Colors.white.withOpacity(0.85),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            width: 400,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row - always visible
+                Row(
+                  children: [
+                    // Temperature and weather icon
+                    Text(
+                      '${_weather!.temp.round()}°C',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                ],
-              ),
-              if (_isWeatherExpanded) ...[
-                Text(
-                  _weather!.condition,
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const Divider(height: 16),
-                Row(
-                  children: [
+                    const SizedBox(width: 4),
+                    Image.network(
+                      _weather!.iconUrl,
+                      width: 28,
+                      height: 28,
+                    ),
+                    const Text(
+                      ' | ',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 16,
+                      ),
+                    ),
                     Text(
-                      'Feels like: ${_weather!.feelsLike.round()}°C',
-                      style: const TextStyle(fontSize: 12),
+                      _weather!.condition,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Text(
+                      ' | ',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.location_on,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _fullLocationName ??
+                            _locationName ??
+                            'Unknown Location',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(
+                      _isWeatherExpanded
+                          ? Icons.expand_less
+                          : Icons.expand_more,
+                      size: 20,
+                      color: Colors.grey,
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Humidity: ${_weather!.humidity.round()}%',
-                      style: const TextStyle(fontSize: 12),
+                // Animated details section
+                AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 300),
+                  crossFadeState: _isWeatherExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Column(
+                      children: [
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildDetailItem(
+                              'Feels like',
+                              '${_weather!.feelsLike.round()}°C',
+                            ),
+                            _buildDetailItem(
+                              'Humidity',
+                              '${_weather!.humidity.round()}%',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildDetailItem(
+                              'Wind',
+                              '${_weather!.windSpeed.round()} km/h ${_weather!.windDir}',
+                            ),
+                            _buildDetailItem(
+                              'UV Index',
+                              _weather!.uv.round().toString(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildDetailItem(
+                              'Visibility',
+                              '${_weather!.visibility} km',
+                            ),
+                            _buildDetailItem(
+                              'Pressure',
+                              '${_weather!.pressure} mb',
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    Text(
-                      'UV Index: ${_weather!.uv.round()}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Wind: ${_weather!.windSpeed.round()} km/h',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    Text(
-                      'Direction: ${_weather!.windDir}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Visibility: ${_weather!.visibility} km',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    Text(
-                      'Pressure: ${_weather!.pressure} mb',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
+                  ),
                 ),
               ],
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -749,7 +829,8 @@ class _MapPageState extends State<MapPage> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate:
+                    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                 subdomains: const ['a', 'b', 'c'],
               ),
               MarkerLayer(
@@ -788,7 +869,8 @@ class _MapPageState extends State<MapPage> {
                         onTap: () => _selectCamp(camp),
                         child: Icon(
                           Icons.local_hospital,
-                          color: _selectedCamp == camp ? Colors.blue : Colors.red,
+                          color:
+                              _selectedCamp == camp ? Colors.blue : Colors.red,
                           size: 40,
                         ),
                       ),
@@ -809,22 +891,25 @@ class _MapPageState extends State<MapPage> {
               ),
               // Survivor markers
               MarkerLayer(
-                markers: _survivors.map((survivor) => Marker(
-                  width: 60,
-                  height: 60,
-                  point: survivor.location,
-                  child: GestureDetector(
-                    onTap: () {
-                      _showSnackBar('SOS Alert from ${survivor.timestamp.toString()}');
-                      _getRoute(survivor.location);
-                    },
-                    child: const Icon(
-                      Icons.emergency,
-                      color: Colors.red,
-                      size: 30,
-                    ),
-                  ),
-                )).toList(),
+                markers: _survivors
+                    .map((survivor) => Marker(
+                          width: 60,
+                          height: 60,
+                          point: survivor.location,
+                          child: GestureDetector(
+                            onTap: () {
+                              _showSnackBar(
+                                  'SOS Alert from ${survivor.timestamp.toString()}');
+                              _getRoute(survivor.location);
+                            },
+                            child: const Icon(
+                              Icons.emergency,
+                              color: Colors.red,
+                              size: 30,
+                            ),
+                          ),
+                        ))
+                    .toList(),
               ),
               if (_routePoints.isNotEmpty)
                 PolylineLayer(
@@ -840,7 +925,6 @@ class _MapPageState extends State<MapPage> {
           ),
           _buildSearchBar(),
           if (_weather != null) _buildWeatherInfo(),
-          _buildTransportSelector(),
           _buildRouteInfo(),
           _buildCampInfo(),
           if (_loading || _isCalculatingRoute || _isSearching)
