@@ -20,6 +20,7 @@ import 'screens/medical_chat_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'widgets/weather_widget.dart';
 import 'user_session.dart';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,6 +82,7 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
   Stream<List<Map<String, dynamic>>>? _alertStream;
+  Timer? _locationResetTimer;
 
   @override
   void initState() {
@@ -89,6 +91,12 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
     _fetchNotification();
     _initializeNotifications();
     _listenToEmergencyAlert();
+  }
+
+  @override
+  void dispose() {
+    _locationResetTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _requestLocationPermission() async {
@@ -277,6 +285,19 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
           'latitude': position.latitude,
           'longitude': position.longitude,
         }).eq('email', UserSession.email as String);
+        // Set timer to reset location after 1 hour
+        _locationResetTimer?.cancel();
+        _locationResetTimer = Timer(const Duration(hours: 1), () async {
+          try {
+            await supabase.from('users').update({
+              'latitude': null,
+              'longitude': null,
+            }).eq('email', UserSession.email as String);
+            print('User location reset to null after 1 hour');
+          } catch (e) {
+            print('Error resetting user location: $e');
+          }
+        });
       } catch (e) {
         print('Error updating user location: $e');
       }

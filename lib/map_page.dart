@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'user_session.dart';
 
 class Weather {
   final double temp;
@@ -330,19 +331,31 @@ class _MapPageState extends State<MapPage> {
   Future<void> _updateSurvivors() async {
     try {
       final supabase = Supabase.instance.client;
+      // Fetch users who have location data and are not the current user
       final response = await supabase
-          .from('alerts')
-          .select()
-          .eq('alert', 'yes')
+          .from('users')
+          .select('id, latitude, longitude, name, created_at')
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null)
+          .neq('email', UserSession.email ?? '')
           .order('created_at', ascending: false)
           .limit(50);
 
       setState(() {
-        _survivors =
-            (response as List).map((data) => Survivor.fromJson(data)).toList();
+        _survivors = (response as List)
+            .map((data) => Survivor(
+                  id: data['id'].toString(),
+                  location: LatLng(data['latitude'], data['longitude']),
+                  timestamp: DateTime.parse(data['created_at']),
+                  needsHelp: true,
+                ))
+            .toList();
       });
     } catch (e) {
       print('Supabase error: $e');
+      setState(() {
+        _survivors = [];
+      });
     }
   }
 
