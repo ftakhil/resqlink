@@ -6,7 +6,6 @@ import 'widgets/alert_card.dart';
 import 'community_screen.dart';
 import 'map_page.dart';
 import 'guide_page.dart';
-import 'auth_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/profile_screen.dart';
 import 'package:vibration/vibration.dart';
@@ -16,12 +15,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'mm32_chat_page.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
-import 'screens/voice_chat_page.dart';
 import 'screens/medical_chat_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'widgets/weather_widget.dart';
 import 'user_session.dart';
 import 'dart:async';
+import 'splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +42,8 @@ class ResQLinkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ResQ Link',
+      home: const SplashScreen(),
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -61,8 +62,6 @@ class ResQLinkApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AuthPage(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
