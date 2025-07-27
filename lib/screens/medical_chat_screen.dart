@@ -121,28 +121,18 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     });
 
     try {
-      var uri = Uri.parse('https://razyergg.app.n8n.cloud/webhook/medical-image');
-      var request = http.MultipartRequest('POST', uri);
-
-      if (kIsWeb) {
-        final bytes = await _pickedFile!.readAsBytes();
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'image',
-            bytes,
-            filename: 'image.jpg',
-            contentType: MediaType('image', 'jpeg'),
-          ),
-        );
-      } else {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'image',
-            _pickedFile!.path,
-            contentType: MediaType('image', 'jpeg'),
-          ),
-        );
-      }
+      var uri = Uri.parse('https://api-inference.huggingface.co/models/microsoft/BiomedVLP-CXR-BERT-specialized');
+      final bytes = await _pickedFile!.readAsBytes();
+      
+      var request = http.Request('POST', uri)
+        ..headers.addAll({
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer hf_TBIGDgZKoaOzXXXXXXXXXXXX'  // Replace with your actual API key
+        })
+        ..body = json.encode({
+          'image': base64Encode(bytes),
+          'wait_for_model': true
+        });
 
       var response = await request.send();
       var responseBody = await response.stream.bytesToString();
@@ -152,14 +142,12 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
           String formattedMessage = '';
           
           try {
-            // Parse the JSON response
-            final jsonList = json.decode(responseBody) as List;
-            if (jsonList.isNotEmpty) {
-              final jsonMap = jsonList[0] as Map<String, dynamic>;
-              formattedMessage = jsonMap['ai_response'] ?? '';
-            }
+            final jsonResponse = json.decode(responseBody);
+            formattedMessage = "Medical Analysis:\n\n" + 
+                             (jsonResponse['medical_analysis'] ?? jsonResponse['generated_text'] ?? 
+                              'No analysis available. Please ensure the image is clear and medically relevant.');
           } catch (e) {
-            formattedMessage = responseBody;
+            formattedMessage = 'Could not process response from medical AI.';
           }
           
           // Clean up the message

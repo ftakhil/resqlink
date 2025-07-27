@@ -3,10 +3,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'widgets/action_icon_button.dart';
 import 'widgets/alert_card.dart';
+import 'widgets/alert_notification.dart';
 import 'community_screen.dart';
 import 'map_page.dart';
 import 'guide_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as realtime;
 import 'screens/profile_screen.dart';
 import 'package:vibration/vibration.dart';
 import 'package:torch_light/torch_light.dart';
@@ -35,8 +37,48 @@ void main() async {
   runApp(const ResQLinkApp());
 }
 
-class ResQLinkApp extends StatelessWidget {
+class ResQLinkApp extends StatefulWidget {
   const ResQLinkApp({super.key});
+
+  @override
+  State<ResQLinkApp> createState() => _ResQLinkAppState();
+}
+
+class _ResQLinkAppState extends State<ResQLinkApp> {
+  bool _showAlert = false;
+  Timer? _alertTimer;
+  final _client = Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAlertListener();
+  }
+
+  void _startAlertListener() {
+    _client.channel('public:users').onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'users',
+      callback: (payload) {
+        if (payload.newRecord['alert'] == 'yes') {
+          setState(() => _showAlert = true);
+          _alertTimer?.cancel();
+          _alertTimer = Timer(const Duration(seconds: 10), () {
+            if (mounted) {
+              setState(() => _showAlert = false);
+            }
+          });
+        }
+      },
+    ).subscribe();
+  }
+
+  @override
+  void dispose() {
+    _alertTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +86,26 @@ class ResQLinkApp extends StatelessWidget {
       title: 'ResQ Link',
       home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return Overlay(
+          initialEntries: [
+            OverlayEntry(
+              builder: (context) => child!,
+            ),
+            if (_showAlert)
+              OverlayEntry(
+                builder: (context) => const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: AlertNotification(
+                    message: "⚠️ Emergency Alert: Danger detected in your area!",
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -418,7 +480,7 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const MM32ChatPage(),
+                            builder: (context) => const ChatScreen(),
                           ),
                         );
                       },

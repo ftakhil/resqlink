@@ -1,345 +1,256 @@
-// --- Imports ---
-import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:udp/udp.dart';
-import 'user_session.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_client_sse/flutter_client_sse.dart' show SSEClient;
+import 'package:flutter_client_sse/constants/sse_request_type_enum.dart' show SSERequestType;
 
-// --- Configuration ---
-const String NODE_A_IP = "192.168.4.1"; // Center Node (Access Point)
-const int UDP_PORT = 4210;
+const String esp32Ip = '192.168.4.1';
 
-// Data model for a chat message
-class Message {
-  final String text;
-  final String sender;
-  final bool isMe;
-
-  Message({required this.text, required this.sender, required this.isMe});
+void main() {
+  runApp(const MeshApp());
 }
 
-// --- ChatProvider Class ---
-class ChatProvider with ChangeNotifier {
-  final List<Message> _messages = [];
-  String _status = "Connect to 'ESP32_Mesh_AP' to begin.";
-  String _userName = UserSession.name ?? UserSession.email ?? "User-${DateTime.now().second}";
-  UDP? _udpSocket;
-  StreamSubscription<Datagram?>? _udpListener;
-
-  List<Message> get messages => _messages;
-  String get status => _status;
-  String get userName => _userName;
-
-  ChatProvider() {
-    startUdpListener(); // Start listening immediately
-  }
-
-  void setUserName(String name) {
-    if (name.isNotEmpty) {
-      _userName = name;
-      _updateStatus("Name set to '$name'. Listening for messages.");
-      notifyListeners();
-    }
-  }
-
-  void _updateStatus(String newStatus) {
-    _status = newStatus;
-    notifyListeners();
-  }
-
-  // --- Start UDP Listener for broadcasts from Node A ---
-  Future<void> startUdpListener() async {
-    _updateStatus("Starting UDP listener...");
-    try {
-      _udpSocket = await UDP.bind(Endpoint.any(port: Port(UDP_PORT)));
-      _updateStatus("Listening on UDP $UDP_PORT...");
-
-      _udpListener = _udpSocket?.asStream().listen(
-        (Datagram? datagram) {
-          if (datagram != null) {
-            try {
-              final jsonString = utf8.decode(datagram.data);
-              final Map<String, dynamic> data = jsonDecode(jsonString);
-              final sender = data['sender'] ?? 'Unknown';
-              final message = data['message'] ?? '';
-
-              // Filter out messages from the current user to avoid duplicates
-              if (sender != _userName) {
-                _messages.add(
-                  Message(
-                    text: message,
-                    sender: sender,
-                    isMe:
-                        false, // Messages from others are not from the current user
-                  ),
-                );
-                notifyListeners();
-              }
-            } catch (e) {
-              print("Error parsing UDP message: $e");
-            }
-          }
-        },
-        onError: (e) {
-          _updateStatus("UDP Listener error.");
-        },
-      );
-    } catch (e) {
-      _updateStatus("Failed to bind UDP: $e");
-    }
-  }
-
-  // --- Send message to Node A ---
-  Future<void> sendMessage(String messageText) async {
-    if (messageText.trim().isEmpty) return;
-
-    // Add the message locally first to avoid duplicates
-    final localMessage = Message(
-      text: messageText.trim(),
-      sender: _userName,
-      isMe: true,
-    );
-    _messages.add(localMessage);
-    notifyListeners();
-
-    final payload = {"sender": _userName, "message": messageText.trim()};
-    final jsonData = utf8.encode(jsonEncode(payload));
-
-    try {
-      await _udpSocket?.send(
-        jsonData,
-        Endpoint.broadcast(port: Port(UDP_PORT)),
-      );
-      _updateStatus("Message sent to all users (broadcast)");
-    } catch (e) {
-      _updateStatus("Send failed. Check Wi-Fi.");
-      print("UDP Send Error: $e");
-    }
-  }
-
-  @override
-  void dispose() {
-    _udpListener?.cancel();
-    _udpSocket?.close();
-    super.dispose();
-  }
-}
-
-// --- Main App ---
-class MM32ChatPage extends StatelessWidget {
-  const MM32ChatPage({super.key});
+class MeshApp extends StatelessWidget {
+  const MeshApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ChatProvider(),
-      child: const ChatScreen(),
+    return MaterialApp(
+      title: 'ESP32 Mesh Chat',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: Colors.cyan,
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.cyan,
+          secondary: Colors.cyanAccent,
+        ),
+      ),
+      home: const ChatScreen(),
     );
   }
 }
 
-// --- Chat Screen UI ---
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
+
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final _textController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _scrollController = ScrollController();
+  final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _usernameController =
+      TextEditingController(text: 'User');
+  final List<Map<String, dynamic>> _messages = [];
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _nameController.text = context.read<ChatProvider>().userName;
+    _connectToSse();
   }
 
-  void _sendMessage() {
-    if (_textController.text.isNotEmpty) {
-      context.read<ChatProvider>().sendMessage(_textController.text);
-      _textController.clear();
-      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-    }
+  void _connectToSse() {
+    SSEClient.subscribeToSSE(
+      method: SSERequestType.GET,
+      url: 'http://$esp32Ip/events',
+      header: {"Accept": "text/event-stream"},
+    ).listen((event) {
+      if (event.data != null && event.data!.isNotEmpty) {
+        try {
+          final data = jsonDecode(event.data!);
+
+          // Check if this is an echo of a message we just sent.
+          final isMe = data['username'] == _usernameController.text;
+          if (isMe) {
+            // If it's our own message coming back, find the temporary local one...
+            final int existingIndex = _messages.indexWhere(
+                (m) => m['isLocal'] == true && m['message'] == data['message']);
+            // ...and if found, remove it before adding the final version from the network.
+            if (existingIndex != -1) {
+              setState(() {
+                _messages.removeAt(existingIndex);
+              });
+            }
+          }
+
+          setState(() {
+            _messages.insert(0, data);
+          });
+          _scrollController.animateTo(0.0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut);
+        } catch (e) {
+          print('Error parsing SSE data: $e');
+        }
+      }
+    }, onError: (error) {
+      print('SSE Client Error: $error');
+    });
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
+  Future<void> _sendMessage() async {
+    if (_messageController.text.isEmpty || _usernameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Username and message cannot be empty.'),
+            backgroundColor: Colors.orangeAccent),
       );
+      return;
     }
-  }
 
-  void _showNameDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Set Your Name"),
-        content: TextField(
-          controller: _nameController,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: "Enter your name"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              context.read<ChatProvider>().setUserName(_nameController.text);
-              Navigator.of(context).pop();
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
-    );
+    final messageText = _messageController.text;
+    final username = _usernameController.text;
+
+    // *** FIX PART 1: INSTANTLY DISPLAY SENT MESSAGE ***
+    // Create a temporary "local" message and add it to the list right away.
+    final localMessage = {
+      "username": username,
+      "message": messageText,
+      "isLocal": true, // A temporary flag to identify this message
+      "from_node": "Sending...", // Show a temporary status
+    };
+    setState(() {
+      _messages.insert(0, localMessage);
+    });
+    _scrollController.animateTo(0.0,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+
+    _messageController.clear();
+
+    // Now, send the actual message to the ESP32
+    final messageBody = {
+      "username": username,
+      "message": messageText,
+    };
+
+    try {
+      await http.post(
+        Uri.parse('http://$esp32Ip/send'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(messageBody),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Failed to send. Check Wi-Fi connection.'),
+              backgroundColor: Colors.redAccent),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final chatProvider = context.watch<ChatProvider>();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('ESP32 Mesh Chat'),
-            Text(
-              chatProvider.status,
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: 'Change Name',
-            onPressed: _showNameDialog,
-          ),
-        ],
+        title: const Text('Offline Mesh Chat'),
+        elevation: 0,
       ),
       body: Column(
         children: [
+          _buildUsernameField(),
           Expanded(
-            child: Consumer<ChatProvider>(
-              builder: (context, provider, child) => ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(8.0),
-                itemCount: provider.messages.length,
-                itemBuilder: (context, index) =>
-                    MessageBubble(message: provider.messages[index]),
-              ),
+            child: ListView.builder(
+              controller: _scrollController,
+              reverse: true,
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                // A message is "mine" if the username matches OR if it's a local temporary message.
+                final isMe = msg['isLocal'] == true ||
+                    msg['username'] == _usernameController.text;
+                return MessageBubble(data: msg, isMe: isMe);
+              },
             ),
           ),
-          MessageComposer(controller: _textController, onSend: _sendMessage),
+          _buildMessageComposer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsernameField() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: TextField(
+        controller: _usernameController,
+        decoration: InputDecoration(
+          labelText: 'Your Name',
+          prefixIcon: const Icon(Icons.person),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageComposer() {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration: InputDecoration(
+                hintText: 'Type a message...',
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                    borderSide: BorderSide.none),
+              ),
+              onSubmitted: (_) => _sendMessage(),
+            ),
+          ),
+          const SizedBox(width: 8.0),
+          IconButton.filled(
+            style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor),
+            icon: const Icon(Icons.send),
+            onPressed: _sendMessage,
+          ),
         ],
       ),
     );
   }
 }
 
-// --- Message Bubble Widget ---
 class MessageBubble extends StatelessWidget {
-  final Message message;
-  const MessageBubble({super.key, required this.message});
+  final Map<String, dynamic> data;
+  final bool isMe;
+  const MessageBubble({super.key, required this.data, required this.isMe});
 
   @override
   Widget build(BuildContext context) {
-    final isMe = message.isMe;
+    final username = data['username'] ?? 'Unknown';
+    final message = data['message'] ?? '';
+    final fromNode = data['from_node'] ?? 'N/A';
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 14.0),
         margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+        padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
-          color: isMe ? Colors.deepPurple : Colors.white,
-          borderRadius: BorderRadius.circular(18.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 2,
-              offset: const Offset(1, 1),
-            ),
-          ],
+          color: isMe ? Colors.cyan.shade800 : Colors.grey.shade800,
+          borderRadius: BorderRadius.circular(12.0),
         ),
         child: Column(
-          crossAxisAlignment: isMe
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            if (!isMe)
-              Text(
-                message.sender,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: Colors.black54,
-                ),
-              ),
-            Text(
-              message.text,
-              style: TextStyle(
-                color: isMe ? Colors.white : Colors.black87,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- Message Composer Widget ---
-class MessageComposer extends StatelessWidget {
-  final TextEditingController controller;
-  final VoidCallback onSend;
-
-  const MessageComposer({
-    super.key,
-    required this.controller,
-    required this.onSend,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      color: Colors.white,
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  hintText: 'Type a message...',
-                  filled: true,
-                  fillColor: Colors.grey[200],
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 10,
-                    horizontal: 16,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30.0),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                onSubmitted: (_) => onSend(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.send),
-              color: Theme.of(context).primaryColor,
-              onPressed: onSend,
-            ),
+            Text(username,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isMe ? Colors.cyanAccent : Colors.white70)),
+            const SizedBox(height: 4.0),
+            Text(message, style: const TextStyle(fontSize: 16.0)),
+            const SizedBox(height: 4.0),
+            Text('via $fromNode',
+                style: const TextStyle(fontSize: 10.0, color: Colors.white54)),
           ],
         ),
       ),
