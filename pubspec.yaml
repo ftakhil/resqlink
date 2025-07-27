@@ -1,17 +1,17 @@
 name: resq_link
 description: A new Flutter project for ResQ Link.
 
-publish_to: 'none'
+publish_to: 'none' 
 
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.8.1 <4.0.0'
+  sdk: '^3.8.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  uuid: ^4.3.3
+  
   cupertino_icons: ^1.0.2
   curved_navigation_bar: ^1.0.3
   flutter_animate: ^4.1.1+1
@@ -38,6 +38,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  
   flutter_lints: ^2.0.0
 
 flutter:

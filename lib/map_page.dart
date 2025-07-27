@@ -156,8 +156,7 @@ class _MapPageState extends State<MapPage> {
               address['town'] ??
               address['suburb'] ??
               address['city'] ??
-              address['hamlet'] ??
-              null;
+              address['hamlet'];
           // Dummy logic for disaster risk based on location
           final random = point.latitude.abs() % 4;
           _disasterRisk = random < 1
@@ -503,8 +502,9 @@ class _MapPageState extends State<MapPage> {
   }
 
   Widget _buildRouteInfo() {
-    if (_routeDistance == null || _routeDuration == null)
+    if (_routeDistance == null || _routeDuration == null) {
       return const SizedBox.shrink();
+    }
 
     return Positioned(
       top: 16,
@@ -674,7 +674,7 @@ class _MapPageState extends State<MapPage> {
   }
 
   Widget _buildCompactWeatherSafe() {
-    final temp = _weather?.temp?.round() ?? '--';
+    final temp = _weather?.temp.round() ?? '--';
     final iconUrl = _weather?.iconUrl ?? '';
     final condition = _weather?.condition ?? '';
     final location = _locationName ?? 'Unknown Location';
@@ -743,17 +743,17 @@ class _MapPageState extends State<MapPage> {
   }
 
   Widget _buildExpandedWeatherSafe() {
-    final temp = _weather?.temp?.round() ?? '--';
+    final temp = _weather?.temp.round() ?? '--';
     final iconUrl = _weather?.iconUrl ?? '';
     final condition = _weather?.condition ?? '';
     final location = _locationName ?? 'Unknown Location';
     final state = _stateName ?? '';
     final exactPlace = _exactPlaceName ?? '';
-    final feelsLike = _weather?.feelsLike?.round() ?? '--';
-    final humidity = _weather?.humidity?.round() ?? '--';
-    final windSpeed = _weather?.windSpeed?.round() ?? '--';
+    final feelsLike = _weather?.feelsLike.round() ?? '--';
+    final humidity = _weather?.humidity.round() ?? '--';
+    final windSpeed = _weather?.windSpeed.round() ?? '--';
     final windDir = _weather?.windDir ?? '';
-    final uv = _weather?.uv?.round() ?? '--';
+    final uv = _weather?.uv.round() ?? '--';
     final visibility = _weather?.visibility ?? '--';
     final pressure = _weather?.pressure ?? '--';
     return Column(
@@ -946,10 +946,36 @@ class _MapPageState extends State<MapPage> {
                                   'SOS Alert from ${survivor.timestamp.toString()}');
                               _getRoute(survivor.location);
                             },
-                            child: const Icon(
-                              Icons.emergency,
-                              color: Colors.red,
-                              size: 30,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.location_on,
+                                  color: Colors.red,
+                                  size: 45,
+                                ),
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 2,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(4),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'SOS',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ))
