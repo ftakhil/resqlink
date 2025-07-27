@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'widgets/camp_marker.dart';
+import 'widgets/user_location_marker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -881,17 +883,13 @@ class _MapPageState extends State<MapPage> {
                 markers: [
                   if (_currentPosition != null)
                     Marker(
-                      width: 60,
-                      height: 60,
+                      width: 30,
+                      height: 45,
                       point: LatLng(
                         _currentPosition!.latitude,
                         _currentPosition!.longitude,
                       ),
-                      child: const Icon(
-                        Icons.my_location,
-                        color: Colors.blue,
-                        size: 40,
-                      ),
+                      child: const UserLocationMarker(),
                     ),
                   if (_lastTappedLocation != null)
                     Marker(
@@ -906,17 +904,12 @@ class _MapPageState extends State<MapPage> {
                     ),
                   ...camps.map(
                     (camp) => Marker(
-                      width: 60,
-                      height: 60,
+                      width: 30,
+                      height: 30,
                       point: camp.location,
-                      child: GestureDetector(
+                      child: CampMarker(
+                        isSelected: _selectedCamp == camp,
                         onTap: () => _selectCamp(camp),
-                        child: Icon(
-                          Icons.local_hospital,
-                          color:
-                              _selectedCamp == camp ? Colors.blue : Colors.red,
-                          size: 40,
-                        ),
                       ),
                     ),
                   ),

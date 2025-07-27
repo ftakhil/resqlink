@@ -74,7 +74,7 @@ class _AuthPageState extends State<AuthPage> {
                     validator: (value) => value == null || value.isEmpty ? 'Enter your email' : null,
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  if (!_isSignIn) Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
@@ -95,7 +95,7 @@ class _AuthPageState extends State<AuthPage> {
                             prefixIcon: const Icon(Icons.phone, color: Color(0xFF003366)),
                           ),
                           keyboardType: TextInputType.phone,
-                          validator: (value) => value == null || value.isEmpty ? 'Enter your phone number' : null,
+                          validator: (value) => _isSignIn ? null : (value == null || value.isEmpty ? 'Enter your phone number' : null),
                         ),
                       ),
                     ],
