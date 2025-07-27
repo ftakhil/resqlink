@@ -121,7 +121,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     });
 
     try {
-      var uri = Uri.parse('https://razyeryt.app.n8n.cloud/webhook/medical-image');
+      var uri = Uri.parse('https://razyergg.app.n8n.cloud/webhook/medical-image');
       var request = http.MultipartRequest('POST', uri);
 
       if (kIsWeb) {

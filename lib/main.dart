@@ -13,6 +13,7 @@ import 'package:vibration/vibration.dart';
 import 'package:torch_light/torch_light.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'mm32_chat_page.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'screens/voice_chat_page.dart';
@@ -411,20 +412,27 @@ class _ResQLinkHomePageState extends State<ResQLinkHomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     ActionIconButton(
-                      backgroundColor: Colors.green,
-                      icon: Icons.phone,
-                      label: 'Phone',
-                      onTap: () {},
-                      iconSize: 40, // Increased icon size
-                      avatarRadius: 36, // Increased avatar size
+                      backgroundColor: Colors.deepPurple,
+                      icon: Icons.message,
+                      label: 'MM32',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MM32ChatPage(),
+                          ),
+                        );
+                      },
+                      iconSize: 40,
+                      avatarRadius: 36,
                     ),
                     ActionIconButton(
                       backgroundColor: Colors.grey,
                       icon: Icons.camera_alt,
                       label: 'MedicalCam AI',
                       onTap: openMedicalCamAI,
-                      iconSize: 40, // Increased icon size
-                      avatarRadius: 36, // Increased avatar size
+                      iconSize: 40,
+                      avatarRadius: 36,
                     ),
                   ],
                 )
