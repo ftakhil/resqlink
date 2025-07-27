@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_client_sse/flutter_client_sse.dart' show SSEClient;
 import 'package:flutter_client_sse/constants/sse_request_type_enum.dart' show SSERequestType;
+import 'user_session.dart';
 
 const String esp32Ip = '192.168.4.1';
 
@@ -39,8 +40,6 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final TextEditingController _usernameController =
-      TextEditingController(text: 'User');
   final List<Map<String, dynamic>> _messages = [];
   final ScrollController _scrollController = ScrollController();
 
@@ -61,7 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
           final data = jsonDecode(event.data!);
 
           // Check if this is an echo of a message we just sent.
-          final isMe = data['username'] == _usernameController.text;
+          final isMe = data['username'] == (UserSession.name ?? 'User');
           if (isMe) {
             // If it's our own message coming back, find the temporary local one...
             final int existingIndex = _messages.indexWhere(
@@ -90,17 +89,17 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (_messageController.text.isEmpty || _usernameController.text.isEmpty) {
+    if (_messageController.text.isEmpty || UserSession.name == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Username and message cannot be empty.'),
+            content: Text('Message cannot be empty and you must be logged in.'),
             backgroundColor: Colors.orangeAccent),
       );
       return;
     }
 
     final messageText = _messageController.text;
-    final username = _usernameController.text;
+    final username = UserSession.name!;
 
     // *** FIX PART 1: INSTANTLY DISPLAY SENT MESSAGE ***
     // Create a temporary "local" message and add it to the list right away.
@@ -150,7 +149,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          _buildUsernameField(),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -160,27 +158,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 final msg = _messages[index];
                 // A message is "mine" if the username matches OR if it's a local temporary message.
                 final isMe = msg['isLocal'] == true ||
-                    msg['username'] == _usernameController.text;
+                    msg['username'] == (UserSession.name ?? 'User');
                 return MessageBubble(data: msg, isMe: isMe);
               },
             ),
           ),
           _buildMessageComposer(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildUsernameField() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: TextField(
-        controller: _usernameController,
-        decoration: InputDecoration(
-          labelText: 'Your Name',
-          prefixIcon: const Icon(Icons.person),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
       ),
     );
   }
