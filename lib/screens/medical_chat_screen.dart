@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:http_parser/http_parser.dart';
 
 class ChatMessage {
   final String message;
@@ -121,33 +120,68 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
     });
 
     try {
-      var uri = Uri.parse('https://api-inference.huggingface.co/models/microsoft/BiomedVLP-CXR-BERT-specialized');
+      var uri = Uri.parse('https://razyergg.app.n8n.cloud/webhook/medical-image');
       final bytes = await _pickedFile!.readAsBytes();
       
-      var request = http.Request('POST', uri)
-        ..headers.addAll({
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer hf_TBIGDgZKoaOzXXXXXXXXXXXX'  // Replace with your actual API key
-        })
-        ..body = json.encode({
-          'image': base64Encode(bytes),
-          'wait_for_model': true
-        });
+      var request = http.MultipartRequest('POST', uri);
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'image',
+          bytes,
+          filename: '${DateTime.now().millisecondsSinceEpoch}.jpg',
+          contentType: MediaType('image', 'jpeg')
+        )
+      );
 
-      var response = await request.send();
-      var responseBody = await response.stream.bytesToString();
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
       
       if (response.statusCode == 200) {
         try {
           String formattedMessage = '';
           
           try {
-            final jsonResponse = json.decode(responseBody);
-            formattedMessage = "Medical Analysis:\n\n" + 
-                             (jsonResponse['medical_analysis'] ?? jsonResponse['generated_text'] ?? 
-                              'No analysis available. Please ensure the image is clear and medically relevant.');
+            // Print response for debugging
+            print('Webhook Response: ${response.body}');
+            
+            if (response.body.isNotEmpty) {
+              // Try to parse the response as a JSON string first
+              try {
+                final jsonResponse = json.decode(response.body);
+                // Handle the response as a simple string if it's directly in the response
+                if (jsonResponse is Map) {
+                  // If it's an object, look for the result in common field names
+                  var result = jsonResponse['result']?.toString() ?? 
+                             jsonResponse['analysis']?.toString() ?? 
+                             jsonResponse['response']?.toString() ?? 
+                             jsonResponse['message']?.toString();
+                  if (result != null) {
+                    // Remove the [ai_response: prefix and closing bracket if present
+                    result = result.replaceAll(RegExp(r'^\[{ai_response:\s*'), '')
+                                 .replaceAll(RegExp(r'\}]$'), '');
+                    formattedMessage = result.trim();
+                  } else {
+                    formattedMessage = jsonResponse.toString();
+                  }
+                } else {
+                  var response = jsonResponse.toString();
+                  response = response.replaceAll(RegExp(r'^\[{ai_response:\s*'), '')
+                                   .replaceAll(RegExp(r'\}]$'), '');
+                  formattedMessage = response.trim();
+                }
+              } catch (e) {
+                // If it's not JSON, use the response body directly
+                var cleanResponse = response.body
+                    .replaceAll(RegExp(r'^\[{ai_response:\s*'), '')
+                    .replaceAll(RegExp(r'\}]$'), '');
+                formattedMessage = cleanResponse.trim();
+              }
+            } else {
+              formattedMessage = 'Received empty response from server.';
+            }
           } catch (e) {
-            formattedMessage = 'Could not process response from medical AI.';
+            print('Error parsing response: $e');
+            formattedMessage = 'Could not process response from medical AI: $e';
           }
           
           // Clean up the message
@@ -163,7 +197,7 @@ class _MedicalChatScreenState extends State<MedicalChatScreen> {
         }
       } else {
         _addMessage(ChatMessage(
-          message: 'Failed to upload image: ${response.statusCode}\n$responseBody',
+          message: 'Failed to upload image: ${response.statusCode}\n${response.body}',
           isUser: false,
         ));
       }
