@@ -24,39 +24,85 @@ class RegionDetailsScreen extends StatelessWidget {
         leading: BackButton(onPressed: () {
           Navigator.pop(context);
         }),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (context) => DraggableScrollableSheet(
+                  initialChildSize: 0.7,
+                  minChildSize: 0.5,
+                  maxChildSize: 0.95,
+                  expand: false,
+                  builder: (_, scrollController) => ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'If you are in this disaster area, please contact these numbers',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+                      Text('Emergency Contacts', 
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: Colors.red, 
+                          fontWeight: FontWeight.bold
+                        )
+                      ),
+                      const SizedBox(height: 8),
+                      ...contacts.map((c) => Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: const Icon(Icons.phone, color: Colors.green),
+                          title: Text('${c['role']}'),
+                          subtitle: Text('${c['name']}'),
+                          trailing: Text('${c['number']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      )),
+                      const SizedBox(height: 24),
+                      Text('Safe Camps', 
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: Colors.blue, 
+                          fontWeight: FontWeight.bold
+                        )
+                      ),
+                      const SizedBox(height: 8),
+                      ...camps.map((camp) => Card(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: const Icon(Icons.home, color: Colors.orange),
+                          title: Text('${camp['name']}'),
+                          subtitle: Text('${camp['location']}'),
+                        ),
+                      )),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            Text(
-              'If you are in this disaster area, please contact these numbers',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Text('Emergency Contacts', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.red, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            ...contacts.map((c) => Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: ListTile(
-                leading: const Icon(Icons.phone, color: Colors.green),
-                title: Text('${c['role']}'),
-                subtitle: Text('${c['name']}'),
-                trailing: Text('${c['number']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            )),
-            const SizedBox(height: 24),
-            Text('Safe Camps', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.blue, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            ...camps.map((camp) => Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: ListTile(
-                leading: const Icon(Icons.home, color: Colors.orange),
-                title: Text('${camp['name']}'),
-                subtitle: Text('${camp['location']}'),
-              ),
-            )),
-            const SizedBox(height: 24),
             Text('Send a direct message', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             Row(
