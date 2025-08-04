@@ -1,10 +1,32 @@
 import 'package:flutter/material.dart';
 
-class RegionDetailsScreen extends StatelessWidget {
+class RegionDetailsScreen extends StatefulWidget {
   final String regionName;
   final int selectedIndex;
   final void Function(int)? onNavItemTapped;
   const RegionDetailsScreen({Key? key, required this.regionName, this.selectedIndex = 1, this.onNavItemTapped}) : super(key: key);
+
+  @override
+  State<RegionDetailsScreen> createState() => _RegionDetailsScreenState();
+}
+
+class _RegionDetailsScreenState extends State<RegionDetailsScreen> {
+  bool isNeedHelp = true; // Default to Need Help mode
+  final TextEditingController controller = TextEditingController();
+  final List<Map<String, dynamic>> messages = [];
+
+  void _sendMessage() {
+    if (controller.text.trim().isNotEmpty) {
+      setState(() {
+        messages.add({
+          'text': controller.text,
+          'isNeedHelp': isNeedHelp,
+          'timestamp': DateTime.now(),
+        });
+        controller.clear();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +42,7 @@ class RegionDetailsScreen extends StatelessWidget {
     final TextEditingController controller = TextEditingController();
     return Scaffold(
       appBar: AppBar(
-        title: Text(regionName),
+        title: Text(widget.regionName),
         leading: BackButton(onPressed: () {
           Navigator.pop(context);
         }),
@@ -99,39 +121,123 @@ class RegionDetailsScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            Text('Send a direct message', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Type your message...',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final message = messages[index];
+                return Align(
+                  alignment: message['isNeedHelp'] ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: message['isNeedHelp'] 
+                          ? Colors.red[100]
+                          : Colors.green[100],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: message['isNeedHelp']
+                            ? Colors.red[300]!
+                            : Colors.green[300]!,
+                      ),
+                    ),
+                    child: Text(
+                      message['text'],
+                      style: TextStyle(
+                        color: message['isNeedHelp']
+                            ? Colors.red[900]
+                            : Colors.green[900],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
-                  onPressed: () {
-                    // TODO: Handle send message
-                  },
+                );
+              },
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: const Offset(0, -1),
                 ),
               ],
             ),
-          ],
-        ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.emergency_outlined, size: 16),
+                      label: const Text('Need Help'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isNeedHelp ? Colors.red : Colors.grey[200],
+                        foregroundColor: isNeedHelp ? Colors.white : Colors.grey[600],
+                        elevation: isNeedHelp ? 2 : 0,
+                      ),
+                      onPressed: () => setState(() => isNeedHelp = true),
+                    ),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.volunteer_activism, size: 16),
+                      label: const Text('Offer Help'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: !isNeedHelp ? Colors.green : Colors.grey[200],
+                        foregroundColor: !isNeedHelp ? Colors.white : Colors.grey[600],
+                        elevation: !isNeedHelp ? 2 : 0,
+                      ),
+                      onPressed: () => setState(() => isNeedHelp = false),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        decoration: InputDecoration(
+                          hintText: isNeedHelp ? 'Type your request...' : 'Type your offer...',
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isNeedHelp ? Colors.red : Colors.green,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.send, color: Colors.white),
+                        onPressed: _sendMessage,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      bottomNavigationBar: onNavItemTapped != null ? BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: onNavItemTapped,
+      bottomNavigationBar: widget.onNavItemTapped != null ? BottomNavigationBar(
+        currentIndex: widget.selectedIndex,
+        onTap: widget.onNavItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Community'),
