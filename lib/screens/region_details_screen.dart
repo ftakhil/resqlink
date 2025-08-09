@@ -358,7 +358,7 @@ class _RegionDetailsScreenState extends State<RegionDetailsScreen> {
                   ),
           ),
           Container(
-            decoration: BoxDecoration(
+            decoration = BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
@@ -369,8 +369,8 @@ class _RegionDetailsScreenState extends State<RegionDetailsScreen> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            padding = const EdgeInsets.all(16),
+            child = Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
@@ -472,20 +472,7 @@ Color _getColorFromName(String name) {
       ),
       bottomNavigationBar: widget.onNavItemTapped != null
           ? BottomNavigationBar(
-              currentIndex: widget.selectedIndex,
-              onTap: widget.onNavItemTapped,
-              items: const [
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.home), label: 'Home'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.people), label: 'Community'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.map), label: 'Map'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.menu_book), label: 'Guide'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.person), label: 'Profile'),
-              ],
+              onTap = widget.onNavItemTapped,
             )
           : null,
     );
